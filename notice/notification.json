@@ -18,25 +18,25 @@
         }
     },
     {
-        "comment": "=== 版本更新 v1.3.0 ===",
-        "id": "update_v1_3_0",
+        "comment": "=== 版本更新 v1.3.1 ===",
+        "id": "update_v1_3_1",
         "status": "active",
         "type": "version",
         "logic": {
-            "target_version": "v1.3.0",
+            "target_version": "v1.3.1",
             "operator": "<",
             "interval_hours": 24
         },
         "ui": {
-            "title": "发现新版本 v1.3.0",
-            "date": "2026-02-10",
-            "message": "本次更新包含重大功能提升：\n1. 新增睡眠定时与播放倍数功能\n2. 新增“逻辑”设置页签，支持自动恢复进度\n3. 优化进度条/音量条拖拽体验，极其丝滑\n4. 新增本地缓存统计与一键重置功能\n5. 修复搜索结果丢失与移动端样式问题",
+            "title": "发现新版本 v1.3.1",
+            "date": "2026-02-11",
+            "message": "本次更新致力于交互细节与听感体验：\n1. 新增侧边栏封面展示开关，自由定义布局\n2. 新增音量“淡入淡出”功能，切换歌曲更顺滑\n3. 优化进度条拖拽体验，引入防抖消除复读感\n4. 修复收藏夹音质识别问题，还原Hi-Res质感\n5. 修复长歌名显示不全及详情页按钮淡化干扰",
             "confirm_text": "去查看",
             "cancel_text": "稍后提醒"
         },
         "action": {
             "type": "link",
-            "url": "https://github.com/XCQ0607/lxserver/releases/tag/v1.3.0"
+            "url": "https://github.com/XCQ0607/lxserver/releases/tag/v1.3.1"
         }
     }
 ]
