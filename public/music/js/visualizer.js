@@ -142,12 +142,14 @@ const musicVisualizer = (function () {
             const footerIsHidden = playerFooter && playerFooter.classList.contains('translate-y-[110%]');
 
             // 增加容器高度和 Footer 高度
-            visualizerContainer.style.height = '100px';
+            const isShortWindow = window.innerHeight <= 700;
+            visualizerContainer.style.height = isShortWindow ? '40px' : '100px';
             visualizerContainer.style.zIndex = '1';
             visualizerContainer.style.display = 'flex'; // 确保可见
             if (playerFooter) {
                 playerFooter.style.transition = 'height 0.3s ease';
-                playerFooter.style.height = '150px';
+                // 再次压缩：超矮窗口下，Footer 高度仅设为 90px
+                playerFooter.style.height = isShortWindow ? '90px' : '150px';
                 playerFooter.style.justifyContent = 'center'; // [Fix] 增加高度后内容保持垂直居中
             }
 
@@ -160,8 +162,10 @@ const musicVisualizer = (function () {
             const mainViews = document.querySelectorAll('#view-search, #view-favorites, #view-settings, #view-about, #view-player-detail');
             mainViews.forEach(view => {
                 view.style.transition = 'padding-bottom 0.3s ease';
-                // 如果 Footer 已经隐藏了，不需要额外 Padding
-                view.style.paddingBottom = footerIsHidden ? '' : '180px';
+                // 激进压缩：在短屏下 Padding 仅设为 80px，确保页面内容整体下移，给顶部留出空间
+                let padding = footerIsHidden ? '' : '180px';
+                if (!footerIsHidden && isShortWindow) padding = '80px';
+                view.style.paddingBottom = padding;
             });
 
             // 调整侧边栏底部 Padding

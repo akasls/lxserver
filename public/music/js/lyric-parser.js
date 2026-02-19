@@ -191,6 +191,7 @@ try {
                 if (this.isPlay) {
                     timeoutTools.start(() => {
                         if (!this.isPlay) return
+                        this.curLineNum = -1
                         this._refresh()
                     }, delay)
                 }
@@ -204,6 +205,11 @@ try {
 
         play(curTime = 0) {
             if (!this.lines.length) return
+            if (this.isPlay) {
+                // 如果已经在播放，检查当前时间差，如果偏差较大则重置
+                const currentTime = this._currentTime();
+                if (Math.abs(currentTime - curTime) < 100) return;
+            }
             this.pause()
             this.isPlay = true
 

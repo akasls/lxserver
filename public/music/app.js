@@ -440,7 +440,15 @@ function switchTab(tabId) {
         el.classList.remove('opacity-100');
         el.classList.add('opacity-0');
     });
+    // special handling for favorites
+    if (tabId === 'favorites' && currentListData) {
+        handleFavoritesClick();
+        return;
+    }
+
     const activeView = document.getElementById(`view-${tabId}`);
+    if (!activeView) return;
+
     activeView.classList.remove('hidden');
     // small delay to allow display block to apply before opacity transition
     setTimeout(() => {
@@ -1968,6 +1976,15 @@ audio.addEventListener('play', () => {
     }
 });
 
+audio.addEventListener('playing', () => {
+    // [Fix] 'playing' 事件表示音频真正开始震动输出，此时同步最准确
+    if (lyricPlayer) {
+        lyricPlayer.play(audio.currentTime * 1000);
+        isUserScrolling = false;
+        scrollToActiveLine(true); // 强制对齐
+    }
+});
+
 audio.addEventListener('pause', () => {
     if ('mediaSession' in navigator) {
         navigator.mediaSession.playbackState = 'paused';
@@ -2989,8 +3006,8 @@ function toggleLyrics() {
             if (currentLyricLines.length === 0) {
                 fetchLyric(currentPlayingSong);
             }
-            // [Fix] Ensure we are synced and centered when opening
-            if (lyricPlayer) {
+            // 仅在音频正在播放时才启动歌词滚动，防止暂停时打开详情页歌词自走
+            if (lyricPlayer && !audio.paused) {
                 lyricPlayer.play(audio.currentTime * 1000);
             }
             setTimeout(() => scrollToActiveLine(true), 100);
@@ -3061,23 +3078,8 @@ async function fetchLyric(song) {
 
                 console.log(`[Lyric] 使用缓存歌词: ${source}_${songmid}`);
 
-                // Initialize logic (Same as below)
-                if (!window.LinePlayer) return;
-
-                if (!lyricPlayer) {
-                    lyricPlayer = new window.LinePlayer({
-                        offset: 0,
-                        rate: currentPlaybackRate || 1,
-                        onPlay: (lineNum, text, curTime) => {
-                            syncLyricByLineNum(lineNum);
-                        },
-                        onSetLyric: (lines, offset) => {
-                            currentLyricLines = lines;
-                            window.currentLyricLines = lines; // expose for lyric-card.js
-                            renderLyric(lines);
-                        }
-                    });
-                }
+                // Initialize logic
+                initLyricPlayer();
                 applyLyricUpdate();
                 return; // 命中缓存，直接返回
             }
@@ -3142,29 +3144,8 @@ async function fetchLyric(song) {
             return;
         }
 
-        // Check if LinePlayer is available
-        if (!window.LinePlayer) {
-            console.error('[Lyric] LinePlayer not loaded');
-            renderLyric([], '歌词解析器加载失败');
-            return;
-        }
-
-        // Initialize LinePlayer if not exists
-        if (!lyricPlayer) {
-            lyricPlayer = new window.LinePlayer({
-                offset: 0,
-                rate: currentPlaybackRate || 1,
-                onPlay: (lineNum, text, curTime) => {
-                    syncLyricByLineNum(lineNum);
-                },
-                onSetLyric: (lines, offset) => {
-                    currentLyricLines = lines;
-                    window.currentLyricLines = lines; // expose for lyric-card.js
-                    renderLyric(lines);
-                }
-            });
-        }
-
+        // Initialize LinePlayer
+        initLyricPlayer();
         applyLyricUpdate();
 
     } catch (e) {
@@ -3198,9 +3179,34 @@ function applyLyricUpdate() {
 
     lyricPlayer.setLyric(currentRawLrc, extendedLyrics);
 
-    // Start playing if audio is already playing
-    if (!audio.paused && audio.currentTime > 0) {
+    // [Fix] 仅在音频真正播放时才启动歌词滚动
+    if (!audio.paused) {
         lyricPlayer.play(audio.currentTime * 1000);
+    } else {
+        lyricPlayer.pause(); // 确保强制同步到暂停状态
+    }
+}
+
+// 辅助函数：初始化歌词播放器
+function initLyricPlayer() {
+    if (!window.LinePlayer) {
+        console.error('[Lyric] LinePlayer not loaded');
+        return;
+    }
+
+    if (!lyricPlayer) {
+        lyricPlayer = new window.LinePlayer({
+            offset: 0,
+            rate: currentPlaybackRate || 1,
+            onPlay: (lineNum, text, curTime) => {
+                syncLyricByLineNum(lineNum);
+            },
+            onSetLyric: (lines, offset) => {
+                currentLyricLines = lines;
+                window.currentLyricLines = lines; // expose for lyric-card.js
+                renderLyric(lines);
+            }
+        });
     }
 }
 
@@ -3912,7 +3918,14 @@ function handleListClick(listId) {
 }
 
 function handleFavoritesClick() {
-    toggleFavorites(); // Toggle folder
+    toggleFavorites(); // Toggle folder dropdown in sidebar
+
+    if (!currentListData) {
+        // Not logged in, switch to the guidance view directly
+        switchTab('favorites');
+        document.getElementById('page-title').innerText = "我的收藏";
+        return;
+    }
 
     // Switch to Search View (Global Local)
     document.querySelectorAll('[id^="view-"]').forEach(el => el.classList.add('hidden'));
@@ -5814,23 +5827,25 @@ function toggleDetailCover() {
     const container = document.getElementById('player-detail-container');
     const lyricsWrapper = document.getElementById('lyrics-wrapper');
     const lyricContent = document.getElementById('lyric-content');
-    const titleContainer = document.querySelector('#lyrics-wrapper > div:first-child'); // Title/Artist container
 
-    const titleParent = document.getElementById('lyrics-wrapper').querySelector('div:first-child');
+    // 获取标题区域父容器
+    const titleParent = lyricsWrapper ? lyricsWrapper.querySelector('div:first-child') : null;
 
     if (!cover || !container) return;
 
-    // Toggle state based on class presence
+    // 根据 cover 的透明度状态判断当前是否隐藏
     const isHidden = cover.classList.contains('opacity-0');
 
     if (!isHidden) {
-        // HIDE COVER
+        // --- 隐藏封面 ---
         cover.style.maxHeight = '0px';
         cover.style.maxWidth = '0px';
         cover.style.margin = '0px';
         cover.classList.remove('mb-8', 'md:mb-0');
         cover.classList.add('opacity-0', 'scale-90', 'border-0');
 
+        // 移除容器间距，确保歌词可以完美水平居中
+        container.classList.remove('gap-4', 'md:gap-20');
         container.classList.remove('pt-24');
         container.classList.add('pt-8', 'md:pt-32');
 
@@ -5840,22 +5855,27 @@ function toggleDetailCover() {
         }
 
         if (lyricContent) {
+            // 移除左对齐类，改为居中
             lyricContent.classList.remove('md:items-start', 'md:text-left');
             lyricContent.classList.add('items-center', 'text-center');
         }
 
         if (titleParent) {
+            // 标题也需要居中
             titleParent.classList.remove('md:text-left');
             titleParent.classList.add('text-center');
         }
 
     } else {
-        // SHOW COVER
+        // --- 显示封面 ---
         cover.style.maxHeight = '';
         cover.style.maxWidth = '';
         cover.style.margin = '';
         cover.classList.remove('opacity-0', 'scale-90', 'border-0');
+        cover.classList.add('md:mb-0');
 
+        // 恢复容器间距
+        container.classList.add('gap-4', 'md:gap-20');
         container.classList.add('pt-24');
         container.classList.remove('pt-8', 'md:pt-32');
 
@@ -5865,13 +5885,12 @@ function toggleDetailCover() {
         }
 
         if (lyricContent) {
+            // 恢复桌面端的左对齐（移动端默认仍是居中）
             lyricContent.classList.add('md:items-start', 'md:text-left');
-            lyricContent.classList.add('items-center', 'text-center');
         }
 
         if (titleParent) {
             titleParent.classList.add('md:text-left');
-            titleParent.classList.add('text-center');
         }
     }
 }

@@ -414,7 +414,7 @@
             </nav>
 
             <!-- Mini Player Info (Optional, cover art here) -->
-            <div class="hidden md:block sidebar-song-info-wrapper mt-auto">
+            <div class="hidden md:block [@media(max-height:650px)]:!hidden sidebar-song-info-wrapper mt-auto">
                 <div id="sidebar-song-info" class="p-4 border-t border-gray-100 hidden">
                     <img id="sidebar-cover" src="/music/assets/logo.svg" onerror="this.src='/music/assets/logo.svg'"
                         alt="Cover" class="w-full rounded-lg shadow-md mb-3 dynamic-logo">
@@ -589,11 +589,27 @@
 
                 <!-- Favorites View -->
                 <div id="view-favorites"
-                    class="absolute inset-0 flex flex-col px-6 pt-6 pb-32 hidden opacity-0 transition-all duration-300">
+                    class="absolute inset-0 flex flex-col px-6 pt-6 md:px-12 md:pt-12 pb-32 hidden opacity-0 transition-all duration-300">
                     <div class="flex-1 flex flex-col items-center justify-center text-gray-400">
-                        <i class="fas fa-heart-broken text-6xl opacity-20 mb-4"></i>
-                        <h2 class="text-xl font-medium text-gray-500">敬请期待</h2>
-                        <p class="text-sm mt-2">功能正在开发中...</p>
+                        <div class="relative mb-8">
+                            <div
+                                class="w-32 h-32 bg-emerald-50 rounded-full flex items-center justify-center animate-pulse">
+                                <i class="fas fa-heart text-6xl text-emerald-500/20"></i>
+                            </div>
+                            <div
+                                class="absolute -bottom-2 -right-2 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center border border-gray-100">
+                                <i class="fas fa-user-shield text-emerald-500"></i>
+                            </div>
+                        </div>
+                        <h2 class="text-2xl md:text-3xl font-bold text-gray-800 tracking-tight">开启云端收藏之旅</h2>
+                        <p class="text-gray-500 mt-4 mb-10 text-center max-w-md leading-relaxed px-6">
+                            您的收藏暂时无法同步。请前往设置页面登录，同步您的LX MUSIC歌单，享受跨设备的一致体验。
+                        </p>
+                        <button onclick="switchTab('settings')"
+                            class="px-10 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-2xl shadow-xl shadow-emerald-200 transition-all transform hover:-translate-y-1 active:translate-y-0 flex items-center gap-3 group">
+                            <i class="fas fa-sign-in-alt group-hover:translate-x-1 transition-transform"></i>
+                            立即去登录 (Go to Login)
+                        </button>
                     </div>
                 </div>
 
@@ -1095,6 +1111,9 @@
                                     <div>
                                         <h4 class="text-sm font-bold text-gray-800">展示侧边栏封面/标题 (Sidebar Info)</h4>
                                         <p class="text-xs text-gray-400 mt-1">
+                                            屏幕太窄时自动隐藏
+                                        </p>
+                                        <p class="text-xs text-gray-400 mt-1">
                                             是否在屏幕左下角展示当前播放歌曲的封面和名称 (仅在电脑版生效)。
                                         </p>
                                     </div>
@@ -1483,7 +1502,8 @@
         </div>
 
         <!-- Navbar / Controls -->
-        <div class="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-6 py-6 pointer-events-none">
+        <div
+            class="absolute top-0 inset-x-0 z-20 flex items-center justify-between px-6 h-20 pointer-events-none transition-all duration-300 [@media(max-height:500px)]:opacity-0 [@media(max-height:500px)]:pointer-events-none">
             <button onclick="toggleLyrics()"
                 class="pointer-events-auto text-gray-600 hover:text-emerald-600 bg-white/40 hover:bg-white/80 rounded-full w-10 h-10 flex items-center justify-center transition-all shadow-sm backdrop-blur-md">
                 <i class="fas fa-chevron-down text-lg"></i>
@@ -1496,18 +1516,18 @@
 
         <!-- Main Content -->
         <div id="player-detail-container"
-            class="relative z-10 flex-1 flex flex-col md:flex-row items-center justify-start md:justify-center gap-8 md:gap-20 pt-24 md:pt-0 pb-6 overflow-hidden transition-all duration-300 ease-out">
+            class="relative z-10 flex-1 flex flex-col md:flex-row items-center justify-start md:justify-center gap-4 md:gap-20 pt-20 md:pt-0 pb-6 overflow-hidden transition-all duration-300 ease-out [@media(max-height:500px)]:pt-0 [@media(max-height:500px)]:justify-center">
 
             <!-- Left: Image -->
             <div id="mobile-player-cover-container"
-                class="w-auto h-auto max-w-[48vw] max-h-[32vh] aspect-square md:w-[28rem] md:h-[28rem] md:max-w-none md:max-h-none flex-shrink-0 shadow-[0_20px_50px_rgba(0,0,0,0.3)] rounded-3xl overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] border-4 border-white/20 origin-top bg-gray-100">
+                class="w-auto h-auto max-w-[48vw] max-h-[32vh] [@media(max-height:500px)]:max-h-[40vh] aspect-square md:w-[28rem] md:h-[28rem] md:max-w-none md:max-h-none flex-shrink-0 shadow-[0_20px_50px_rgba(0,0,0,0.3)] rounded-3xl overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] border-4 border-white/20 origin-top bg-gray-100">
                 <img id="detail-cover" src="/music/assets/logo.svg" onerror="this.src='/music/assets/logo.svg'"
                     class="w-full h-full object-cover">
             </div>
 
             <!-- Right: Lyrics -->
             <div id="lyrics-wrapper"
-                class="w-full md:w-1/2 h-full max-h-[60vh] flex flex-col relative transition-all duration-300">
+                class="w-full md:w-1/2 h-full max-h-[60vh] [@media(max-height:500px)]:max-h-[50vh] flex flex-col relative transition-all duration-300">
                 <!-- Song Info -->
                 <div class="mb-4 md:mb-8 text-center md:text-left px-4 md:px-0 cursor-pointer transition-all duration-300 active:scale-95 select-none"
                     onclick="toggleDetailCover()" title="点击切换封面显示">
