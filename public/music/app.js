@@ -47,6 +47,7 @@ let settings = {
     autoResume: true, // 自动恢复进度 (默认开启)
     showSidebarSongInfo: true, // 展示侧边栏封面
     enableCrossfade: true, // 音频淡入淡出
+    keepScreenAwake: false, // 保持屏幕唤醒设置
     enableKeyboardShortcuts: true, // 按键快捷方式 (默认开启)
     showLyricTranslation: true, // 显示歌词翻译
     showLyricRoma: false, // 显示歌词罗马音
@@ -2053,8 +2054,27 @@ audio.addEventListener('timeupdate', () => {
     }
 });
 
+// Screen Wake Lock (NoSleep.js) Wrapper
+let noSleepInstance = null;
+function toggleNoSleep(enable) {
+    if (typeof NoSleep === 'undefined') return;
+    if (!noSleepInstance) {
+        noSleepInstance = new NoSleep();
+    }
+    if (enable && settings.keepScreenAwake) {
+        if (!noSleepInstance.isEnabled) {
+            noSleepInstance.enable().catch(e => console.warn('[NoSleep] 启用失败:', e));
+        }
+    } else {
+        if (noSleepInstance && noSleepInstance.isEnabled) {
+            noSleepInstance.disable();
+        }
+    }
+}
+
 // Update Media Session State on Play/Pause
 audio.addEventListener('play', () => {
+    toggleNoSleep(true);
     // 确保播放时应用设置的倍速
     audio.playbackRate = currentPlaybackRate;
 
@@ -2091,6 +2111,7 @@ audio.addEventListener('playing', () => {
 });
 
 audio.addEventListener('pause', () => {
+    toggleNoSleep(false);
     if ('mediaSession' in navigator) {
         navigator.mediaSession.playbackState = 'paused';
         updatePositionState();
@@ -2772,6 +2793,12 @@ function syncSettingsUI(key = null, value = null) {
             if (check) check.checked = value;
         }
 
+        if (key === 'keepScreenAwake') {
+            const check = document.getElementById('setting-keep-screen-awake');
+            if (check) check.checked = value;
+            toggleNoSleep(value && !audio.paused); // 实时应用
+        }
+
         if (key === 'enableKeyboardShortcuts') {
             const check = document.getElementById('setting-enable-shortcuts');
             if (check) check.checked = value;
@@ -2900,6 +2927,11 @@ function syncSettingsUI(key = null, value = null) {
     const crossfade = document.getElementById('setting-enable-crossfade');
     if (crossfade) {
         crossfade.checked = settings.enableCrossfade !== false;
+    }
+
+    const keepAwake = document.getElementById('setting-keep-screen-awake');
+    if (keepAwake) {
+        keepAwake.checked = settings.keepScreenAwake === true;
     }
 
     const shortcuts = document.getElementById('setting-enable-shortcuts');
