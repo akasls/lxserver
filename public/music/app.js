@@ -53,6 +53,7 @@ let settings = {
     showLyricRoma: false, // 显示歌词罗马音
     swapLyricTransRoma: false, // 交换翻译与罗马音位置
     autoCompactPlaybar: true, // 自动精简控制栏 (默认开启)
+    enableAutoSkipOnError: true, // 失败自动下一曲 (默认开启)
     // Visualizer Settings (Refactored)
     showFooterVisualizer: true,
     footerVisualizerStyle: 'bars',
@@ -1271,6 +1272,12 @@ async function playSong(song, index, forceQuality = null, noPlay = false, isRetr
 
     // 2. New Song Request: Update target
     const thisRequestSongId = song.id;
+    // Clear any pending auto-skip timer
+    if (window._autoSkipTimer) {
+        clearTimeout(window._autoSkipTimer);
+        window._autoSkipTimer = null;
+    }
+
     const thisRequestId = ++loadingRequestCounter;
     currentLoadingSongId = thisRequestSongId;
     currentLoadingRequestId = thisRequestId;
@@ -1667,6 +1674,15 @@ async function playSong(song, index, forceQuality = null, noPlay = false, isRetr
             if (error.message.includes('not supported') || error.message.includes('自定义源')) {
                 showError('未找到该歌曲的可用源，请检查自定义源设置');
             }
+
+            // 失败自动下一曲逻辑
+            if (settings.enableAutoSkipOnError) {
+                console.log('[Player] Playback failed, auto-skipping to next in 3s...');
+                if (window._autoSkipTimer) clearTimeout(window._autoSkipTimer);
+                window._autoSkipTimer = setTimeout(() => {
+                    playNext();
+                }, 3000);
+            }
         }
         updatePlayButton(false);
     } finally {
@@ -1923,6 +1939,10 @@ async function togglePlay() {
             await fadeVolume(0, 600);
         }
         audio.pause();
+        if (window._autoSkipTimer) {
+            clearTimeout(window._autoSkipTimer);
+            window._autoSkipTimer = null;
+        }
         updatePlayButton(false);
     }
 }
@@ -2844,6 +2864,11 @@ function syncSettingsUI(key = null, value = null) {
             if (check) check.checked = value;
         }
 
+        if (key === 'enableAutoSkipOnError') {
+            const check = document.getElementById('setting-auto-skip-on-error');
+            if (check) check.checked = value;
+        }
+
         if (key === 'showFooterVisualizer') {
             const check = document.getElementById('setting-show-footer-visualizer');
             if (check) check.checked = value;
@@ -3004,6 +3029,9 @@ function syncSettingsUI(key = null, value = null) {
 
     const autoCompact = document.getElementById('setting-auto-compact-playbar');
     if (autoCompact) autoCompact.checked = settings.autoCompactPlaybar !== false;
+
+    const autoSkip = document.getElementById('setting-auto-skip-on-error');
+    if (autoSkip) autoSkip.checked = settings.enableAutoSkipOnError !== false;
 
     const lyricCache = document.getElementById('setting-enable-lyric-cache');
     if (lyricCache) lyricCache.checked = settings.enableLyricCache !== false;
@@ -4186,7 +4214,10 @@ function handleRemoteConnect() {
                 // Save to cache
                 localStorage.setItem('lx_list_data', JSON.stringify(data));
                 // Update global
+                const oldUsername = currentListData ? currentListData.username : null;
                 currentListData = data;
+                if (oldUsername) currentListData.username = oldUsername; // Preserve username
+
                 // Render UI
                 renderMyLists(data);
                 statusEl.innerHTML = '<i class="fas fa-check-circle text-blue-500"></i> 数据已同步';
@@ -4553,6 +4584,9 @@ window.addEventListener('load', () => {
     if (cachedList) {
         try {
             currentListData = JSON.parse(cachedList);
+            const savedUser = localStorage.getItem('lx_sync_user');
+            if (savedUser && currentListData) currentListData.username = savedUser; // Restore username from cache
+
             renderMyLists(currentListData);
             console.log('[Cache] 已恢复缓存的列表数据');
         } catch (e) {
@@ -4597,7 +4631,10 @@ window.addEventListener('load', () => {
                         },
                         setData: async (data) => {
                             localStorage.setItem('lx_list_data', JSON.stringify(data));
+                            const oldUsername = currentListData ? currentListData.username : null;
                             currentListData = data;
+                            if (oldUsername) currentListData.username = oldUsername; // Preserve username
+
                             renderMyLists(data);
                             document.getElementById('sync-status').innerHTML = '<i class="fas fa-check-circle text-blue-500"></i> 数据已同步';
                         },

@@ -41,7 +41,9 @@ async function deleteSingleSong(songId) {
 
             // Reload data from server
             const data = await window.SyncManager.sync();
+            const oldUsername = currentListData ? currentListData.username : null;
             currentListData = data;
+            if (oldUsername) currentListData.username = oldUsername; // Preserve username
             localStorage.setItem('lx_list_data', JSON.stringify(data));
             renderMyLists(data);
 
