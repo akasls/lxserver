@@ -661,8 +661,6 @@ function renderQueue() {
         const isActive = index === currentIndex;
         return `
             <div class="group flex items-center gap-3 p-3 rounded-xl transition-all hover:t-bg-item-hover cursor-pointer relative ${isActive ? 't-bg-item-hover border-l-4 border-emerald-500 pl-2' : ''}"
-                 draggable="true" ondragstart="handleQueueDragStart(event, ${index})" 
-                 ondragover="handleQueueDragOver(event)" ondrop="handleQueueDrop(event, ${index})"
                  onclick="playSongFromQueue(${index})">
                 
                 <div class="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 relative">
@@ -679,13 +677,60 @@ function renderQueue() {
                     <button onclick="event.stopPropagation(); removeFromQueue(${index})" class="p-2 text-gray-400 hover:text-red-500 transition-colors">
                         <i class="fas fa-trash-alt text-xs"></i>
                     </button>
-                    <div class="p-2 text-gray-400 cursor-grab active:cursor-grabbing">
+                    <div class="p-2 text-gray-400 cursor-grab active:cursor-grabbing queue-drag-handle">
                         <i class="fas fa-grip-lines text-xs"></i>
                     </div>
                 </div>
             </div>
         `;
     }).join('');
+
+    // Initialize/Update Sortable (Supports Mobile Touch)
+    if (typeof Sortable !== 'undefined' && listContainer) {
+        try {
+            const oldSortable = Sortable.get(listContainer);
+            if (oldSortable) oldSortable.destroy();
+        } catch (e) { }
+
+        Sortable.create(listContainer, {
+            animation: 200,
+            handle: '.queue-drag-handle',
+            ghostClass: 'sortable-ghost-solid',
+            chosenClass: 'sortable-chosen-item',
+            dragClass: 'sortable-drag-item',
+            forceFallback: true,
+            fallbackOnBody: true,
+            delay: 100,
+            delayOnTouchOnly: true,
+            touchStartThreshold: 3,
+            onStart: () => {
+                document.body.classList.add('select-none');
+            },
+            onEnd: (evt) => {
+                document.body.classList.remove('select-none');
+                const oldIndex = evt.oldIndex;
+                const newIndex = evt.newIndex;
+                if (oldIndex === newIndex) return;
+
+                // Reorder currentPlaylist
+                const movedItem = currentPlaylist.splice(oldIndex, 1)[0];
+                currentPlaylist.splice(newIndex, 0, movedItem);
+
+                // Update currentIndex if it was affected
+                if (currentIndex === oldIndex) {
+                    currentIndex = newIndex;
+                } else if (oldIndex < currentIndex && newIndex >= currentIndex) {
+                    currentIndex--;
+                } else if (oldIndex > currentIndex && newIndex <= currentIndex) {
+                    currentIndex++;
+                }
+
+                renderQueue();
+                savePlaybackState();
+                showInfo('播放顺序已更新');
+            }
+        });
+    }
 
     // Update status to show hint if more than 1 item
     const tip = document.getElementById('queue-tip');
@@ -743,46 +788,7 @@ async function clearQueue() {
 }
 window.clearQueue = clearQueue;
 
-// --- Drag & Drop for Queue ---
-let draggedIndex = null;
-
-function handleQueueDragStart(e, index) {
-    draggedIndex = index;
-    e.dataTransfer.effectAllowed = 'move';
-    e.target.style.opacity = '0.5';
-    // Hide ghost image on some browsers if needed, or just let it be
-}
-
-function handleQueueDragOver(e) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    return false;
-}
-
-function handleQueueDrop(e, targetIndex) {
-    e.preventDefault();
-    if (draggedIndex === null || draggedIndex === targetIndex) return;
-
-    // Reorder currentPlaylist
-    const movedItem = currentPlaylist.splice(draggedIndex, 1)[0];
-    currentPlaylist.splice(targetIndex, 0, movedItem);
-
-    // Update currentIndex if it was affected
-    if (currentIndex === draggedIndex) {
-        currentIndex = targetIndex;
-    } else if (draggedIndex < currentIndex && targetIndex >= currentIndex) {
-        currentIndex--;
-    } else if (draggedIndex > currentIndex && targetIndex <= currentIndex) {
-        currentIndex++;
-    }
-
-    renderQueue();
-    savePlaybackState(); // Save state after reorder
-    draggedIndex = null;
-}
-window.handleQueueDragStart = handleQueueDragStart;
-window.handleQueueDragOver = handleQueueDragOver;
-window.handleQueueDrop = handleQueueDrop;
+// --- Native Drag & Drop Handlers (Removed, replaced by SortableJS) ---
 // ===============================================
 
 // Search Logic
