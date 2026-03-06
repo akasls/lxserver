@@ -107,6 +107,31 @@ function getSourceDir(username?: string) {
     return path.join(root, targetDirName)
 }
 
+// 辅助函数：生成可读且唯一的 ID/文件名
+function generateId(name?: string, fallbackFilename?: string): string {
+    let input = name || fallbackFilename || 'source'
+
+    // 尝试解码，防止输入已经是 URL 编码的状态
+    try {
+        input = decodeURIComponent(input)
+    } catch (e) {
+        // 忽略解码错误（例如包含不合法的 % 字符）
+    }
+
+    // 如果是路径，只取最后一部分
+    let base = path.basename(input)
+
+    // 统一移除 .js 后缀，后面再补上，确保一致性
+    if (base.toLowerCase().endsWith('.js')) {
+        base = base.slice(0, -3)
+    }
+
+    // 过滤掉文件系统非法字符，保持中文等字符可读
+    const clean = base.replace(/[\\/:*?"<>|]/g, '_').trim()
+
+    return `${clean || 'source'}.js`
+}
+
 // 上传脚本
 export async function handleUpload(req: IncomingMessage, res: ServerResponse) {
     try {
@@ -134,8 +159,8 @@ export async function handleUpload(req: IncomingMessage, res: ServerResponse) {
             return
         }
 
-        // 生成唯一ID
-        const id = `${encodeURIComponent(metadata.name || filename)}`
+        // 生成唯一ID（可读的文件名）
+        const id = generateId(metadata.name, filename)
         const scriptPath = path.join(sourcesDir, id)
 
         // 读取现有列表
@@ -147,7 +172,7 @@ export async function handleUpload(req: IncomingMessage, res: ServerResponse) {
         // 检查是否已存在
         const existing = sources.find(s => s.id === id)
         if (existing) {
-            throw new Error(`源 "${metadata.name}" 已存在于 [${targetOwner}]`)
+            throw new Error(`源 "${metadata.name || filename}" 已存在于 [${targetOwner}]`)
         }
 
         // 保存脚本文件
@@ -193,21 +218,41 @@ export async function handleImport(req: IncomingMessage, res: ServerResponse) {
             throw new Error('Missing URL')
         }
 
-        // 下载脚本内容
-        const https = require('https')
-        const http = require('http')
-        const content = await new Promise<string>((resolve, reject) => {
-            const protocol = url.startsWith('https') ? https : http
-            protocol.get(url, (response: any) => {
-                const chunks: any[] = []
-                response.on('data', (chunk: any) => chunks.push(chunk))
-                response.on('end', () => {
-                    const buffer = Buffer.concat(chunks)
-                    resolve(buffer.toString('utf-8'))
-                })
-                response.on('error', reject)
-            }).on('error', reject)
-        })
+        // 辅助函数：支持重定向的下载
+        const download = async (targetUrl: string, depth = 0): Promise<string> => {
+            if (depth > 5) throw new Error('Too many redirects')
+            const protocol = targetUrl.startsWith('https') ? require('https') : require('http')
+
+            return new Promise((resolve, reject) => {
+                protocol.get(targetUrl, (response: any) => {
+                    const { statusCode } = response
+
+                    // 处理重定向
+                    if (statusCode >= 300 && statusCode < 400 && response.headers.location) {
+                        let redirectUrl = response.headers.location
+                        if (!redirectUrl.startsWith('http')) {
+                            const parsedUrl = new URL(targetUrl)
+                            redirectUrl = `${parsedUrl.protocol}//${parsedUrl.host}${redirectUrl}`
+                        }
+                        return resolve(download(redirectUrl, depth + 1))
+                    }
+
+                    if (statusCode !== 200) {
+                        return reject(new Error(`Failed to download: status code ${statusCode}`))
+                    }
+
+                    const chunks: any[] = []
+                    response.on('data', (chunk: any) => chunks.push(chunk))
+                    response.on('end', () => {
+                        const buffer = Buffer.concat(chunks)
+                        resolve(buffer.toString('utf-8'))
+                    })
+                    response.on('error', reject)
+                }).on('error', reject)
+            })
+        }
+
+        const content = await download(url)
 
         // 获取脚本信息
         const { metadata, supportedSources, requireUnsafe } = await getScriptInfo(content, allowUnsafeVM)
@@ -228,9 +273,9 @@ export async function handleImport(req: IncomingMessage, res: ServerResponse) {
             fs.mkdirSync(sourcesDir, { recursive: true })
         }
 
-        // 生成唯一ID
+        // 生成唯一ID（可读的文件名）
         const displayName = metadata.name || filename || 'unknown_source'
-        const id = `${encodeURIComponent(displayName)}`
+        const id = generateId(metadata.name, filename || 'unknown_source')
         const scriptPath = path.join(sourcesDir, id)
 
         // 读取现有列表

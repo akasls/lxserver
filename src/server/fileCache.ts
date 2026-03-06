@@ -75,28 +75,66 @@ export const setCacheLocation = (location: string) => {
 }
 
 export const checkCache = (songInfo: any, username?: string) => {
-    // songInfo comes from query params, should contain 'quality'
-    const dir = getCacheDir(username)
-    const baseName = getFileName(songInfo, songInfo.quality)
-
-    // Check for common audio extensions
-    const extensions = ['.mp3', '.flac', '.m4a', '.ogg', '.wav']
-
-    for (const ext of extensions) {
-        const filePath = path.join(dir, baseName + ext)
-        // console.log(`[FileCache] Checking: ${filePath}`)
-        if (fs.existsSync(filePath)) {
-            // console.log(`[FileCache] Hit: ${filePath}`)
-            return {
-                exists: true,
-                path: filePath,
-                filename: baseName + ext,
-                url: `/api/music/cache/file/${encodeURIComponent(baseName + ext)}`
-            }
-        }
+    let baseDir = ''
+    if (currentCacheLocation === CACHE_ROOTS.DATA) {
+        baseDir = path.join((global as any).lx.dataPath, 'cache')
+    } else {
+        baseDir = path.join(process.cwd(), 'cache')
     }
 
-    console.log(`[FileCache] Miss: ${baseName} .* (Dir: ${dir})`)
+    if (!fs.existsSync(baseDir)) return { exists: false }
+
+    // 待匹配的请求 ID 及其纯净版
+    const targetId = String(songInfo.songmid || songInfo.songId || songInfo.id || '')
+    const cleanId = (id: string) => String(id || '').replace(/^(tx|mg|wy|kg|kw|bd|mg)_/, '')
+    const targetCleanId = cleanId(targetId)
+
+    // 只检查特定目录：传入的 username 目录（如果存在）和公共 _open 目录
+    const dirsToCheck: string[] = []
+    if (username && username !== '_open') dirsToCheck.push(username)
+    dirsToCheck.push('_open')
+
+    for (const userDir of dirsToCheck) {
+        const dirPath = path.join(baseDir, userDir)
+        if (!fs.existsSync(dirPath)) continue
+
+        try {
+            const files = fs.readdirSync(dirPath)
+            for (const file of files) {
+                if (file.endsWith('.tmp') || file.startsWith('.')) continue
+
+                const lastDotIndex = file.lastIndexOf('.')
+                if (lastDotIndex === -1) continue
+                const fileNameWithoutExt = file.substring(0, lastDotIndex)
+
+                // 解析文件名: {Name}-{Singer}-{Source}-{ID}-{Quality}
+                const segments = fileNameWithoutExt.split('-')
+                if (segments.length < 2) continue
+
+                // 提取文件中的 ID 段 (倒数第二个段)
+                const fileId = segments[segments.length - 2]
+                const fileCleanId = cleanId(fileId)
+
+                // 严格全等匹配逻辑
+                const isMatch = (fileId === targetId) ||
+                    (fileCleanId === targetId) ||
+                    (fileId === targetCleanId) ||
+                    (fileCleanId === targetCleanId)
+
+                if (isMatch) {
+                    const filePath = path.join(dirPath, file)
+                    return {
+                        exists: true,
+                        path: filePath,
+                        filename: file,
+                        foundIn: userDir,
+                        url: `/api/music/cache/file/${encodeURIComponent(userDir)}/${encodeURIComponent(file)}`
+                    }
+                }
+            }
+        } catch (e) { continue }
+    }
+
     return { exists: false }
 }
 

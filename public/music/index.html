@@ -1877,6 +1877,28 @@
                                     </div>
                                 </div>
 
+                                <!-- Pre-fetching Setting -->
+                                <div
+                                    class="t-bg-panel rounded-xl border t-border-main p-4 hover:shadow-sm transition-shadow">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <h4 class="text-sm font-bold t-text-main">音乐预读机制 (Pre-fetching)</h4>
+                                            <p class="text-xs t-text-muted mt-1">
+                                                开启：在一首歌曲开始播放时，系统将自动在后台预解析并读取下一首歌曲的播放内容。<br>
+                                                <span class="text-emerald-500 select-none font-medium">*
+                                                    极大提升移动端后台播放的连续性，但可能会产生少量额外流量。</span>
+                                            </p>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" id="setting-enable-preloader" class="sr-only peer"
+                                                onchange="updateSetting('enablePreloader', this.checked)">
+                                            <div
+                                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+
                                 <!-- Change Playlist on Song List Play -->
                                 <div
                                     class="t-bg-panel rounded-xl border t-border-main p-4 hover:shadow-sm transition-shadow">
