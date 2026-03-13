@@ -20,7 +20,7 @@
     {
         "comment": "=== 版本更新 v1.7.4 ===",
         "id": "update_v1_7_4",
-        "status": "active",
+        "status": "inactive",
         "type": "version",
         "logic": {
             "target_version": "v1.7.4",
@@ -37,6 +37,28 @@
         "action": {
             "type": "link",
             "url": "https://github.com/XCQ0607/lxserver/releases/tag/v1.7.4"
+        }
+    },
+    {
+        "comment": "=== 版本更新 v1.7.5 ===",
+        "id": "update_v1_7_5",
+        "status": "active",
+        "type": "version",
+        "logic": {
+            "target_version": "v1.7.5",
+            "operator": "<",
+            "interval_hours": 24
+        },
+        "ui": {
+            "title": "发现新版本 v1.7.5",
+            "date": "2026-03-13",
+            "message": "本次更新带来了以下核心升级：\n1. 📂 缓存管理：新增“缓存歌曲”按钮、优先播放本地缓存设置及独立的缓存管理面板，支持嵌入元数据。\n2. 🔄 智能化服务：增加网络歌单自动更新及音源自动切换匹配功能，解决无版权导致的切歌问题。\n3. 📍 定位与导航：新增“定位到当前列表”功能，并修复了批量操作栏切换 Tab 时的继承 Bug。\n4. 📱 移动端优化：重构了搜索栏在手机端的布局，确保在单行内更紧促地显示，提升小屏操控体验。\n5. ⚙️ 系统优化：清理冗余代码与日志，显著提升 app.js 运行效率并修复若干已知小问题。",
+            "confirm_text": "立即查看",
+            "cancel_text": "稍后提醒"
+        },
+        "action": {
+            "type": "link",
+            "url": "https://github.com/XCQ0607/lxserver/releases/tag/v1.7.5"
         }
     }
 ]

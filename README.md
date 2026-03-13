@@ -8,7 +8,7 @@
   <h1>LX Sync Server</h1> -->
   <p>
     <img src="https://img.shields.io/badge/build-passing-brightgreen?style=flat-square" alt="Build Status">
-    <img src="https://img.shields.io/badge/version-v1.7.4-blue?style=flat-square" alt="Version">
+    <img src="https://img.shields.io/badge/version-v1.7.5-blue?style=flat-square" alt="Version">
     <img src="https://img.shields.io/badge/node-%3E%3D16-green?style=flat-square" alt="Node Version">
     <img src="https://img.shields.io/github/license/XCQ0607/lxserver?style=flat-square" alt="License">
     <br>
@@ -44,37 +44,53 @@
   <img src="md/search.png" width="800" alt="Search Interface">
 </p>
 
-### 3. 歌单同步
-
-与 LX Music 客户端数据完美互通，收藏的歌曲瞬间同步到 Web 端。
+### 3. 内容与播放列表
+  
+支持**多平台歌单**的浏览、搜索与一键播放，提供直观的**歌单详情**面板，包含封面、作者、简介等完整信息。**播放队列**支持拖拽排序、批量管理及快速定位当前播放。
 
 <p align="center">
-  <img src="md/sync.png" width="400" alt="Sync">
-  <img src="md/favorite.png" width="400" alt="Favorite List">
+  <img src="md/musiclist.png" width="800" alt="歌单浏览">
 </p>
 
-### 4. 强大的播放控制与设置
+<p align="center">
+  <img src="md/musiclist-detail.png" width="400" alt="歌单详情">
+  <img src="md/playlist.png" width="400" alt="播放队列管理">
+</p>
 
+### 4. 强大的播放控制
+  
 支持播放模式切换、音质选择、歌词显示、睡眠定时、播放倍数等功能。
 
 <p align="center">
-  <img src="md/controller.png" width="600" alt="Controller">
+  <img src="md/controller.png" width="800" alt="Controller">
 </p>
 
-<div align="center">
-  <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
-    <div style="text-align: center;">
-      <p><b>自定义显示</b></p>
-      <img src="md/display.png" width="380" alt="display">
-    </div>
-    <div style="text-align: center;">
-      <p><b>睡眠定时</b></p>
-      <img src="md/sleep.png" width="380" alt="sleep">
-    </div>
-  </div>
-</div>
+### 5. 缓存管理
+  
+内置**全自动化缓存系统**，可自动保存歌词、链接及歌曲文件，通过专门的**缓存控制面板**实现颗粒化管理，极大提升弱网环境下的播放流畅度。
 
-### 5. 自定义源管理
+<p align="center">
+  <img src="md/cache.png" width="800" alt="缓存自动化管理">
+</p>
+
+### 6. 歌词卡片分享
+  
+新增**歌词卡片分享**功能，支持自定义卡片比例（竖版/横版/方版）、色彩风格（深色/浅色/专辑色）及歌词行数，一键生成精美海报，支持旋转缩放。
+
+<p align="center">
+  <img src="md/share.png" width="800" alt="歌词卡片社交分享">
+</p>
+
+### 7. 主题定制与系统功能
+  
+支持**多套现代化主题**（如森之韵、深海鲨、暖阳意、绯红月等），并可根据系统自动切换暗亮模式。系统设置支持**自动更新网络歌单**、**账号设置自动备份**及**多维度代理**配置，确保播放顺滑稳定。
+
+<p align="center">
+  <img src="md/theme.png" width="400" alt="现代化主题切换">
+  <img src="md/settings.png" width="400" alt="全方位系统配置">
+</p>
+
+### 8. 自定义源管理
 
 支持导入自定义源脚本，扩展更多音乐来源。
 

@@ -4,6 +4,7 @@ import path from 'path'
 import http from 'http'
 import https from 'https'
 import { PassThrough } from 'stream'
+import * as NodeID3 from 'node-id3'
 
 // Define the two possible cache roots
 export const CACHE_ROOTS = {
@@ -65,7 +66,104 @@ const getFileName = (songInfo: any, quality?: string) => {
     return name
 }
 
+// Helper to sanitize for URL/Path
+const sanitize = (str: any) => String(str || '').replace(/[\\/:*?"<>|]/g, '_')
+
 // --- Public APIs ---
+
+/**
+ * Get detailed cache list for a user
+ */
+export const getCacheList = async (username?: string) => {
+    const dir = getCacheDir(username)
+    if (!fs.existsSync(dir)) return []
+
+    const files = fs.readdirSync(dir)
+    const result = []
+
+    const extensions = ['.mp3', '.flac', '.m4a', '.ogg', '.wav']
+
+    for (const file of files) {
+        const ext = path.extname(file).toLowerCase()
+        if (extensions.includes(ext)) {
+            const filePath = path.join(dir, file)
+            try {
+                const stats = fs.statSync(filePath)
+
+                // Parse info from filename: {Name}-{Singer}-{Source}-{ID}-{Quality}.ext
+                const nameWithoutExt = path.basename(file, ext)
+                const segments = nameWithoutExt.split('-')
+
+                let metadata: any = {
+                    filename: file,
+                    size: stats.size,
+                    mtime: stats.mtime,
+                    ext: ext,
+                    // From filename as fallback
+                    name: segments[0] || 'Unknown',
+                    singer: segments[1] || 'Unknown',
+                    source: segments[2] || 'unknown',
+                    id: segments[3] || '',
+                    quality: segments[4] || ''
+                }
+
+                // If MP3, try to get tags via NodeID3
+                if (ext === '.mp3') {
+                    const tags = NodeID3.read(filePath)
+                    if (tags) {
+                        if (tags.title) metadata.name = tags.title
+                        if (tags.artist) metadata.singer = tags.artist
+                        if (tags.album) metadata.album = tags.album
+                        metadata.hasCover = !!tags.image
+                    }
+                }
+
+                result.push(metadata)
+            } catch (e) {
+                // Skip files with errors
+            }
+        }
+    }
+
+    // Sort by mtime descending (newest first)
+    return result.sort((a, b) => b.mtime.getTime() - a.mtime.getTime())
+}
+
+/**
+ * Get cover image for a cached file
+ */
+export const getCacheCover = (filename: string, username?: string) => {
+    const dir = getCacheDir(username)
+    const filePath = path.join(dir, path.basename(filename))
+
+    if (fs.existsSync(filePath)) {
+        try {
+            const tags = NodeID3.read(filePath)
+            if (tags && tags.image) {
+                // console.log(`[Cache] Found cover for: ${filename}`)
+                return tags.image
+            }
+        } catch (e) {
+            // console.error(`[Cache] Error reading ID3 for cover: ${filename}`, e)
+        }
+    }
+    return null
+}
+
+/**
+ * Remove a specific cache file
+ */
+export const removeCacheFile = (filename: string, username?: string) => {
+    const dir = getCacheDir(username)
+    const filePath = path.join(dir, path.basename(filename))
+
+    if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath)
+        console.log(`[FileCache] Manually deleted: ${filename}`)
+        return true
+    }
+    return false
+}
 
 export const setCacheLocation = (location: string) => {
     if (location === CACHE_ROOTS.DATA || location === CACHE_ROOTS.ROOT) {
@@ -174,12 +272,70 @@ export const downloadAndCache = async (songInfo: any, url: string, quality?: str
             fileStream.on('finish', () => {
                 fileStream.close()
                 // Rename temp to final
-                fs.rename(tempPath, finalPath, (err) => {
+                fs.rename(tempPath, finalPath, async (err) => {
                     if (err) {
                         fs.unlink(tempPath, () => { })
                         reject(err)
                     } else {
                         console.log(`[FileCache] Cached saved to: ${finalPath}`)
+
+                        // [Enhancement] Write ID3 Tags for MP3 files
+                        if (ext === '.mp3') {
+                            try {
+                                const songName = songInfo.name || 'Unknown'
+                                const artist = songInfo.singer || 'Unknown'
+                                const album = songInfo.albumName || (songInfo.meta && songInfo.meta.albumName) || ''
+
+                                // Fetch cover image if available
+                                let imageBuffer: Buffer | undefined
+                                const imageUrl = songInfo.img || (songInfo.meta && songInfo.meta.picUrl) ||
+                                    (songInfo.album && (songInfo.album.picUrl || songInfo.album.img))
+
+                                if (imageUrl && imageUrl.startsWith('http')) {
+                                    try {
+                                        imageBuffer = await new Promise((resCover, rejCover) => {
+                                            const imgProtocol = imageUrl.startsWith('https') ? https : http
+                                            imgProtocol.get(imageUrl, (imgRes) => {
+                                                if (imgRes.statusCode !== 200) {
+                                                    rejCover(new Error('Failed to fetch cover'))
+                                                    return
+                                                }
+                                                const chunks: any[] = []
+                                                imgRes.on('data', (chunk) => chunks.push(chunk))
+                                                imgRes.on('end', () => resCover(Buffer.concat(chunks)))
+                                                imgRes.on('error', rejCover)
+                                            }).on('error', rejCover)
+                                        })
+                                    } catch (e) {
+                                        console.warn(`[FileCache] Failed to fetch cover for ID3: ${songName}`, e)
+                                    }
+                                }
+
+                                const tags: any = {
+                                    title: songName,
+                                    artist: artist,
+                                    album: album,
+                                }
+                                if (imageBuffer) {
+                                    tags.image = {
+                                        mime: "image/jpeg",
+                                        type: { id: 3, name: "front cover" }, // front cover
+                                        description: "Cover",
+                                        imageBuffer: imageBuffer,
+                                    }
+                                }
+
+                                const success = NodeID3.write(tags, finalPath)
+                                if (success) {
+                                    console.log(`[FileCache] ID3 Tags written for: ${songName}`)
+                                } else {
+                                    console.warn(`[FileCache] Failed to write ID3 Tags for: ${songName}`)
+                                }
+                            } catch (id3Err) {
+                                console.error(`[FileCache] ID3 tagging error:`, id3Err)
+                            }
+                        }
+
                         resolve()
                     }
                 })

@@ -5,7 +5,7 @@
 <div align="center">
   <p>
     <img src="https://img.shields.io/badge/build-passing-brightgreen?style=flat-square" alt="Build Status">
-    <img src="https://img.shields.io/badge/version-v1.7.4-blue?style=flat-square" alt="Version">
+    <img src="https://img.shields.io/badge/version-v1.7.5-blue?style=flat-square" alt="Version">
     <img src="https://img.shields.io/badge/node-%3E%3D16-green?style=flat-square" alt="Node Version">
     <img src="https://img.shields.io/github/license/XCQ0607/lxserver?style=flat-square" alt="License">
     <br>
@@ -37,33 +37,52 @@ Supports aggregated searching across major music platforms, search and listen to
   <img src="md/search.png" width="800" alt="Search Interface">
 </p>
 
-### 3. Playlist Sync
-Perfectly synced with LX Music clients, your favorite songs are instantly available on the Web side.
+### 3. Content & Playlists
+  
+Browse and search **multi-platform playlists** with ease. View comprehensive **playlist details** including covers, authors, and descriptions. Manage your **playback queue** with drag-and-drop sorting, batch operations, and quick positioning.
+
 <p align="center">
-  <img src="md/sync.png" width="400" alt="Sync">
-  <img src="md/favorite.png" width="400" alt="Favorite List">
+  <img src="md/musiclist.png" width="800" alt="Playlist Browsing">
 </p>
 
-### 4. Powerful Playback Controls & Settings
+<p align="center">
+  <img src="md/musiclist-detail.png" width="400" alt="Playlist Details">
+  <img src="md/playlist.png" width="400" alt="Queue Management">
+</p>
+
+### 4. Powerful Playback Controls
 Supports playback mode switching, sound quality selection, lyrics display, sleep timer, playback speed control, and more.
+
 <p align="center">
-  <img src="md/controller.png" width="600" alt="Controller">
+  <img src="md/controller.png" width="800" alt="Controller">
 </p>
 
-<div align="center">
-  <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
-    <div style="text-align: center;">
-      <p><b>Custom Display</b></p>
-      <img src="md/display.png" width="380" alt="display">
-    </div>
-    <div style="text-align: center;">
-      <p><b>Sleep Timer</b></p>
-      <img src="md/sleep.png" width="380" alt="sleep">
-    </div>
-  </div>
-</div>
+### 5. Cache Management
+  
+Features a **fully automated caching system** for lyrics, links, and song files, managed via a dedicated **cache control panel** for smooth playback even in weak network conditions.
 
-### 5. Custom Source Management
+<p align="center">
+  <img src="md/cache.png" width="800" alt="Automated Cache Management">
+</p>
+
+### 6. Lyric Card Sharing
+  
+Introducing **Lyric Card Sharing**—generate stunning posters with customizable aspect ratios (Portrait/Landscape/Square), color styles (Dark/Light/Album colors), and line counts, with support for rotation and scaling.
+
+<p align="center">
+  <img src="md/share.png" width="800" alt="Social Lyric Card Sharing">
+</p>
+
+### 7. Themes & System Configuration
+  
+Choose from multiple **modern themes** (Emerald, Deep Blue, Warm Sun, Nebula, Crimson) with automatic Light/Dark mode switching. Powerful system settings include **auto-updating network playlists**, **automatic config backups**, and multi-dimensional proxy support for seamless playback.
+
+<p align="center">
+  <img src="md/theme.png" width="400" alt="Modern Theme Switching">
+  <img src="md/settings.png" width="400" alt="System Configuration">
+</p>
+
+### 8. Custom Source Management
 Supports importing custom source scripts to expand music sources even further.
 <p align="center">
   <img src="md/source.png" width="800" alt="Source Management">

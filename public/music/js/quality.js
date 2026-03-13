@@ -9,9 +9,8 @@ const QUALITY_PRIORITY = ['flac24bit', 'flac', '320k', '128k'];
 // 音质显示名称
 const QUALITY_NAMES = {
     'flac24bit': 'Hi-Res',
-    'flac': 'SQ',
     'flac': '无损',
-    '320k': 'HQ',
+    '320k': '高品质',
     '128k': '标准'
 };
 

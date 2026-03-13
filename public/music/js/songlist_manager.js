@@ -158,7 +158,8 @@ window.SongListManager = (function () {
             detailState.list = [];
             document.getElementById('sl-detail-name').innerText = '正在加载...';
             document.getElementById('sl-detail-title').innerText = '加载中...';
-            document.getElementById('sl-detail-cover').src = '/music/assets/logo.svg';
+            if (window.setImg) window.setImg('sl-detail-cover', '/music/assets/logo.svg');
+            else document.getElementById('sl-detail-cover').src = '/music/assets/logo.svg';
             document.getElementById('sl-detail-author').innerText = '';
             document.getElementById('sl-detail-subtitle').innerText = '正在加载歌单详情...';
             const descEl = document.getElementById('sl-detail-desc');
@@ -189,6 +190,18 @@ window.SongListManager = (function () {
             }
             detailState.total = data.total;
             window.viewingPlaylist = detailState.list; // Sync with global
+
+            // Initialize Unified Search for this context only on first load
+            if (page === 1) {
+                window.ListSearch.init('songlist', {
+                    renderCallback: () => window.SongListManager.renderDetail(),
+                    getList: () => detailState.list
+                });
+            } else if (window.ListSearch && window.ListSearch.state.active && window.ListSearch.state.id === 'songlist') {
+                // If appending more songs while filtering, refresh results
+                window.ListSearch.handleSearch();
+                return; // handleSearch already calls renderDetail
+            }
 
             renderDetail();
         } catch (e) {
@@ -252,7 +265,9 @@ window.SongListManager = (function () {
         container.innerHTML = currentState.list.map(item => `
             <div class="group cursor-pointer" onclick="window.SongListManager.openDetail('${item.id}', '${currentState.source}')">
                 <div class="relative aspect-square overflow-hidden rounded-2xl shadow-md transition-all group-hover:shadow-xl group-hover:-translate-y-1">
-                    <img src="${item.img || '/music/assets/logo.svg'}" class="w-full h-full object-cover" loading="lazy">
+                    <img data-src="${item.img || '/music/assets/logo.svg'}" src="/music/assets/logo.svg" 
+                         class="lazy-image w-full h-full object-cover dynamic-logo is-placeholder" 
+                         onerror="this.src='/music/assets/logo.svg'; this.classList.add('is-placeholder');">
                     <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <div class="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-lg transform scale-50 group-hover:scale-100 transition-transform duration-300">
                             <i class="fas fa-play ml-1"></i>
@@ -295,13 +310,16 @@ window.SongListManager = (function () {
         const info = detailState.info;
         if (!info) return;
 
+        const listContainer = document.getElementById('sl-detail-list');
+
         // Sync with global viewingPlaylist
         window.viewingPlaylist = detailState.list;
 
         document.getElementById('sl-detail-name').innerText = info.name;
         document.getElementById('sl-detail-name').title = info.name;
         document.getElementById('sl-detail-title').innerText = info.name;
-        document.getElementById('sl-detail-cover').src = info.img || info.cover || '/music/assets/logo.svg';
+        if (window.setImg) window.setImg('sl-detail-cover', info.img || info.cover || '/music/assets/logo.svg');
+        else document.getElementById('sl-detail-cover').src = info.img || info.cover || '/music/assets/logo.svg';
         document.getElementById('sl-detail-author').innerText = info.author || '';
 
         // Render stats (time, song count, play count)
@@ -347,11 +365,27 @@ window.SongListManager = (function () {
             });
         }
 
-        const listContainer = document.getElementById('sl-detail-list');
-        listContainer.innerHTML = detailState.list.map((song, index) => {
+        // --- Unified Search & Filtering Logic ---
+        const displayList = window.ListSearch.getDisplayList(detailState.list);
+
+        listContainer.innerHTML = displayList.map((obj, displayIdx) => {
+            const song = obj.item;
+            const index = obj.originalIndex;
             const isSelected = window.selectedItems.has(String(song.id));
+            const isMatched = window.ListSearch.isMatched(index);
+            const isCurrentMatch = window.ListSearch.isCurrentMatch(index);
+
+            // Highlight Logic: 
+            // - Current Match: Strong border and subtle background
+            // - Matched: Subtle background
+            // - Selected: Theme background (will be defined in CSS)
+            let rowClass = 'grid grid-cols-12 gap-4 p-3 rounded-xl hover:t-bg-panel group transition-colors cursor-pointer ';
+            if (isCurrentMatch) rowClass += 'search-current ';
+            else if (isMatched) rowClass += 'search-match ';
+            if (isSelected) rowClass += 'row-selected ring-1 ring-emerald-500/30 ';
+
             return `
-            <div class="grid grid-cols-12 gap-4 p-3 rounded-xl hover:t-bg-panel group transition-colors cursor-pointer" 
+            <div id="sl-row-${index}" class="${rowClass}" 
                  onclick="window.SongListManager.handleRowClick(${index})">
                 <div class="col-span-1 text-center text-gray-400 font-mono text-xs flex items-center justify-center">
                     ${window.batchMode ? `
@@ -364,8 +398,8 @@ window.SongListManager = (function () {
                 <div class="col-span-8 md:col-span-5 flex items-center gap-3 min-w-0">
                     <div class="w-10 h-10 md:w-12 md:h-12 flex-shrink-0 relative rounded-lg overflow-hidden shadow-sm border t-border-main group-hover:shadow-md transition-all group-hover:scale-105 duration-300">
                         <img data-src="${window.getImgUrl ? window.getImgUrl(song) : (song.img || song.albumImg || '/music/assets/logo.svg')}" src="/music/assets/logo.svg"
-                             class="lazy-image w-full h-full object-cover" 
-                             onerror="this.src='/music/assets/logo.svg'">
+                             class="lazy-image w-full h-full object-cover dynamic-logo is-placeholder" 
+                             onerror="this.src='/music/assets/logo.svg'; this.classList.add('is-placeholder');">
                         <div class="absolute inset-0 bg-black/20 hidden group-hover:flex items-center justify-center transition-all">
                             <i class="fas fa-play text-white text-xs"></i>
                         </div>
@@ -437,6 +471,7 @@ window.SongListManager = (function () {
             document.getElementById('songlist-grid').scrollTo({ top: 0, behavior: 'smooth' });
         },
         openDetail: function (id, source) {
+            if (window.ListSearch) window.ListSearch.resetState();
             loadDetail(id, source);
         },
         closeDetail: function () {
@@ -522,7 +557,7 @@ window.SongListManager = (function () {
                 info: detailState.info,
                 list: detailState.list
             };
-        }
+        },
     };
 })();
 

@@ -45,7 +45,14 @@ function toggleBatchMode() {
 }
 
 function selectAllVisible() {
-    window.viewingPlaylist.forEach(item => {
+    let listToSelect = [];
+    if (window.ListSearch && window.ListSearch.state.active && window.ListSearch.state.onlyShowMatches) {
+        listToSelect = window.ListSearch.getDisplayList(window.viewingPlaylist).map(obj => obj.item);
+    } else {
+        listToSelect = window.viewingPlaylist;
+    }
+
+    listToSelect.forEach(item => {
         const id = String(item.id);
         window.selectedItems.add(id);
         window.selectedSongObjects.set(id, item);
@@ -295,6 +302,9 @@ function changeItemsPerPage(value) {
         localStorage.setItem('lx_settings', JSON.stringify(settings));
     }
     currentPage = 1; // Reset to first page
+    if (window.ListSearch) {
+        window.ListSearch.config.itemsPerPage = val === 'all' ? 999999 : val;
+    }
     renderResults(window.viewingPlaylist || viewingPlaylist);
 }
 

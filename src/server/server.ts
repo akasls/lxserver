@@ -1023,8 +1023,9 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
           res.writeHead(200, { 'Content-Type': 'application/json' })
           res.end(settingsData)
         } else {
-          res.writeHead(404)
-          res.end('Settings not found')
+          // Return empty object instead of 404 to avoid console error on fresh installs
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end('{}')
         }
         return
       }
@@ -1080,8 +1081,9 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
           res.writeHead(200, { 'Content-Type': 'application/json' })
           res.end(soundEffectsData)
         } else {
-          res.writeHead(404)
-          res.end('Sound effects settings not found')
+          // Return empty object instead of 404 to avoid console error on fresh installs
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end('{}')
         }
         return
       }
@@ -1225,6 +1227,64 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
           res.writeHead(500, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ success: false, message: e.message || 'Failed to clear cache' }))
         }
+        return
+      }
+
+      // 7. Get Detailed Cache List
+      if (pathname === '/api/music/cache/list' && req.method === 'GET') {
+        const username = req.headers['x-user-name'] as string
+        void fileCache.getCacheList(username).then(list => {
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ success: true, data: list }))
+        }).catch(err => {
+          res.writeHead(500)
+          res.end(err.message)
+        })
+        return
+      }
+
+      // 8. Get Cache Cover
+      if (pathname === '/api/music/cache/cover' && req.method === 'GET') {
+        const username = (req.headers['x-user-name'] as string) || urlObj.searchParams.get('user') || ''
+        const filename = urlObj.searchParams.get('filename')
+        if (!filename) {
+          res.writeHead(400)
+          res.end('Missing filename')
+          return
+        }
+        const cover: any = fileCache.getCacheCover(filename, username)
+        if (cover && typeof cover === 'object' && cover.imageBuffer) {
+          res.writeHead(200, { 'Content-Type': cover.mime || 'image/jpeg' })
+          res.end(cover.imageBuffer)
+        } else {
+          // Fallback to logo or 404
+          res.writeHead(404)
+          res.end('Not Found')
+        }
+        return
+      }
+
+      // 9. Remove Cache File (Single or Batch)
+      if (pathname === '/api/music/cache/remove' && req.method === 'POST') {
+        const username = req.headers['x-user-name'] as string
+        void readBody(req).then(body => {
+          try {
+            const { filenames } = JSON.parse(body)
+            if (!filenames) throw new Error('Missing filenames')
+
+            const fileList = Array.isArray(filenames) ? filenames : [filenames]
+            let deletedCount = 0
+            for (const f of fileList) {
+              if (fileCache.removeCacheFile(f, username)) deletedCount++
+            }
+
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ success: true, deletedCount }))
+          } catch (e: any) {
+            res.writeHead(400)
+            res.end(e.message)
+          }
+        })
         return
       }
 
@@ -1926,8 +1986,9 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
           res.end(JSON.stringify(result))
         } catch (err: any) {
           console.error('[HotSearch] Error:', err.message)
-          res.writeHead(500, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ error: err.message || '获取热搜失败' }))
+          // Return empty array instead of 500 to keep UI stable
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify([]))
         }
         return
       }

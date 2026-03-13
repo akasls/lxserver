@@ -631,6 +631,37 @@
         .animate-loading-dots span:nth-child(3) {
             animation-delay: 0.4s;
         }
+
+        /* Search Match Highlights - Consistently use theme color-mix */
+        .search-match {
+            background-color: color-mix(in srgb, var(--c-500) 10%, transparent) !important;
+            border-radius: 0.75rem;
+        }
+
+        .search-current {
+            background-color: color-mix(in srgb, var(--c-500) 25%, transparent) !important;
+            box-shadow: inset 0 0 0 2px var(--c-500) !important;
+            border-radius: 0.75rem;
+        }
+
+        .row-selected {
+            background-color: color-mix(in srgb, var(--c-500) 15%, transparent) !important;
+            border-radius: 0.75rem;
+        }
+
+        /* Dark mode refinements: Use deeper theme mix instead of plain white */
+        :root[data-appearance="dark"] .search-match {
+            background-color: color-mix(in srgb, var(--c-500) 12%, transparent) !important;
+        }
+
+        :root[data-appearance="dark"] .search-current {
+            background-color: color-mix(in srgb, var(--c-500) 30%, transparent) !important;
+            box-shadow: inset 0 0 0 2px var(--c-500), 0 0 15px color-mix(in srgb, var(--c-500) 30%, transparent) !important;
+        }
+
+        :root[data-appearance="dark"] .row-selected {
+            background-color: color-mix(in srgb, var(--c-500) 18%, transparent) !important;
+        }
     </style>
 </head>
 
@@ -723,8 +754,9 @@
             <!-- Mini Player Info (Optional, cover art here) -->
             <div class="hidden md:block [@media(max-height:650px)]:!hidden sidebar-song-info-wrapper mt-auto">
                 <div id="sidebar-song-info" class="p-4 border-t t-border-main hidden">
-                    <img id="sidebar-cover" src="/music/assets/logo.svg" onerror="this.src='/music/assets/logo.svg'"
-                        alt="Cover" class="w-full rounded-lg shadow-md mb-3 dynamic-logo">
+                    <img id="sidebar-cover" src="/music/assets/logo.svg"
+                        onerror="this.src='/music/assets/logo.svg'; this.classList.add('is-placeholder');" alt="Cover"
+                        class="w-full rounded-lg shadow-md mb-3 dynamic-logo is-placeholder">
                     <div class="text-center flex flex-col items-center">
                         <div id="sidebar-song-name" class="font-bold text-sm truncate max-w-full block">Song Name
                         </div>
@@ -814,8 +846,8 @@
                         <div class="flex items-center gap-2 justify-end">
                             <!-- Search Button -->
                             <button onclick="doSearch()"
-                                class="p-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-sm transition-colors"
-                                title="搜索">
+                                class="p-2 t-text-main hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+                                title="搜索 (Enter)">
                                 <i class="fas fa-search"></i>
                             </button>
 
@@ -873,10 +905,16 @@
                             class="grid grid-cols-12 gap-2 md:gap-4 p-3 md:p-4 border-b t-border-main t-bg-main text-gray-500 text-sm font-medium">
                             <div class="col-span-2 sm:col-span-1 text-center flex items-center justify-center gap-2">
                                 <span>#</span>
-                                <button onclick="toggleBatchMode()"
-                                    class="text-xs text-emerald-600 hover:text-emerald-700" title="批量操作">
-                                    <i class="fas fa-tasks"></i>
-                                </button>
+                                <div class="flex items-center gap-1">
+                                    <button onclick="toggleBatchMode()"
+                                        class="text-xs text-emerald-600 hover:text-emerald-700" title="批量操作">
+                                        <i class="fas fa-tasks"></i>
+                                    </button>
+                                    <button onclick="window.ListSearch.toggleBar()"
+                                        class="text-xs text-emerald-600 hover:text-emerald-700" title="内搜索 (/)">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="col-span-8 sm:col-span-7 md:col-span-6 lg:col-span-4" id="header-title">歌曲标题
                             </div>
@@ -885,6 +923,60 @@
                                 歌手</div>
                             <div class="hidden lg:block lg:col-span-2" id="header-album">专辑</div>
                             <div class="hidden md:block md:col-span-1 text-center">时长</div>
+                        </div>
+
+                        <!-- Global Local Search Bar (Hidden by default) -->
+                        <div id="gl-local-search-bar"
+                            class="hidden p-3 t-bg-main border-b t-border-main animate-fade-in">
+                            <div class="flex items-center gap-2 sm:gap-3">
+                                <!-- Search Input -->
+                                <div class="relative flex-1 min-w-[24px]">
+                                    <input type="text" id="gl-local-search-input"
+                                        class="w-full pl-9 pr-4 py-2 bg-gray-100 dark:bg-gray-800 border t-border-main rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 t-text-main transition-all"
+                                        placeholder="搜索当前页结果 (歌曲、歌手)..." oninput="window.ListSearch.handleSearch()"
+                                        onkeydown="window.ListSearch.handleKeydown(event)">
+                                    <i
+                                        class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                                </div>
+
+                                <div id="gl-local-search-nav"
+                                    class="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2 opacity-0 pointer-events-none transition-opacity">
+                                    <div
+                                        class="flex border t-border-main rounded-lg overflow-hidden order-1 sm:order-2">
+                                        <button onclick="window.ListSearch.navigate(-1)"
+                                            class="p-1 sm:p-1.5 hover:t-bg-track t-text-main transition-colors border-r t-border-main"
+                                            title="上一个">
+                                            <i class="fas fa-chevron-left text-[10px]"></i>
+                                        </button>
+                                        <button onclick="window.ListSearch.navigate(1)"
+                                            class="p-1 sm:p-1.5 hover:t-bg-track t-text-main transition-colors"
+                                            title="下一个">
+                                            <i class="fas fa-chevron-right text-[10px]"></i>
+                                        </button>
+                                    </div>
+                                    <span id="gl-local-search-count"
+                                        class="text-[9px] sm:text-xs font-mono t-text-muted order-2 sm:order-1 leading-none">0/0</span>
+                                </div>
+
+                                <!-- Filter Toggle -->
+                                <div class="flex items-center gap-3 ml-auto">
+                                    <label class="flex items-center cursor-pointer group">
+                                        <span
+                                            class="text-xs t-text-muted mr-2 group-hover:t-text-main transition-colors hidden sm:block">仅显示匹配项</span>
+                                        <div class="relative inline-flex items-center">
+                                            <input type="checkbox" id="gl-local-search-filter" class="sr-only peer"
+                                                onchange="window.ListSearch.toggleFilter()">
+                                            <div
+                                                class="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500 transition-all">
+                                            </div>
+                                        </div>
+                                    </label>
+                                    <button onclick="window.ListSearch.toggleBar(false)"
+                                        class="p-2 t-text-muted hover:text-red-500 transition-colors" title="关闭搜索">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                         <div id="search-results" class="flex-1 overflow-y-auto p-2 space-y-1 pb-20">
                             <!-- Items will be injected here -->
@@ -923,7 +1015,7 @@
                                     class="w-full pl-10 pr-12 py-3 t-bg-panel border t-border-main rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm text-sm md:text-base"
                                     placeholder="搜索歌单..." onkeypress="handleSongListSearchKeyPress(event)">
                                 <button onclick="window.SongListManager.search()"
-                                    class="absolute right-2 top-1/2 -translate-y-1/2 p-2 t-text-muted hover:text-emerald-500 hover:bg-emerald-50 rounded-lg transition-all"
+                                    class="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-emerald-500 hover:bg-emerald-50 rounded-lg transition-all"
                                     title="开始搜索">
                                     <i class="fas fa-arrow-right text-xs"></i>
                                 </button>
@@ -1030,17 +1122,18 @@
                         <!-- Detail Content -->
                         <div class="flex-1 flex flex-col overflow-hidden">
                             <!-- Info Section -->
-                            <div id="sl-detail-header" class="p-6 flex gap-6 border-b t-border-main t-bg-panel/30">
+                            <div id="sl-detail-header"
+                                class="p-4 md:p-6 flex gap-4 md:gap-6 border-b t-border-main t-bg-panel/30">
                                 <img id="sl-detail-cover"
-                                    class="w-32 h-32 md:w-48 md:h-48 rounded-2xl shadow-xl flex-shrink-0 object-cover"
-                                    src="">
-                                <div class="flex flex-col justify-center gap-3 flex-1 min-w-0">
+                                    class="w-24 h-24 md:w-48 md:h-48 rounded-2xl shadow-xl flex-shrink-0 object-cover dynamic-logo is-placeholder"
+                                    src="/music/assets/logo.svg">
+                                <div class="flex flex-col justify-center gap-1 md:gap-3 flex-1 min-w-0">
                                     <h2 id="sl-detail-name"
-                                        class="text-xl md:text-3xl font-extrabold t-text-main line-clamp-2">
+                                        class="text-lg md:text-3xl font-extrabold t-text-main line-clamp-2">
                                     </h2>
                                     <div class="flex items-center gap-2 flex-wrap">
                                         <div id="sl-detail-author"
-                                            class="text-sm md:text-base font-medium text-emerald-600"></div>
+                                            class="text-xs md:text-base font-medium text-emerald-600"></div>
                                         <div id="sl-detail-stats"
                                             class="flex items-center gap-3 text-xs t-text-muted ml-2">
                                             <!-- Stats injected here by JS -->
@@ -1087,15 +1180,78 @@
                                     <div
                                         class="col-span-1 text-center font-mono flex items-center justify-center gap-1">
                                         <span>#</span>
-                                        <button onclick="toggleBatchMode()"
-                                            class="text-xs text-emerald-600 hover:text-emerald-700" title="批量操作">
-                                            <i class="fas fa-tasks"></i>
-                                        </button>
+                                        <div class="flex items-center gap-1 ml-0.5">
+                                            <button onclick="toggleBatchMode()"
+                                                class="text-xs text-emerald-600 hover:text-emerald-700" title="批量操作">
+                                                <i class="fas fa-tasks"></i>
+                                            </button>
+                                            <button onclick="window.ListSearch.toggleBar()"
+                                                class="text-xs text-emerald-600 hover:text-emerald-700 ml-0.5"
+                                                title="歌单内搜索">
+                                                <i class="fas fa-search"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                     <div class="col-span-8 md:col-span-5">歌曲</div>
                                     <div class="hidden md:block md:col-span-3">歌手</div>
                                     <div class="hidden lg:block lg:col-span-2">专辑</div>
                                     <div class="col-span-3 md:col-span-3 lg:col-span-1 text-right">时长</div>
+                                </div>
+
+                                <!-- Local Search Bar (Hidden by default) -->
+                                <div id="sl-local-search-bar"
+                                    class="hidden p-3 t-bg-main border-b t-border-main animate-fade-in">
+                                    <div class="flex items-center gap-2 sm:gap-3">
+                                        <!-- Search Input -->
+                                        <div class="relative flex-1 min-w-[24px]">
+                                            <input type="text" id="sl-local-search-input"
+                                                class="w-full pl-9 pr-4 py-2 bg-gray-100 dark:bg-gray-800 border t-border-main rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 t-text-main transition-all"
+                                                placeholder="搜索歌曲名、歌手..." oninput="window.ListSearch.handleSearch()"
+                                                onkeydown="window.ListSearch.handleKeydown(event)">
+                                            <i
+                                                class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                                        </div>
+
+                                        <div id="sl-local-search-nav"
+                                            class="flex flex-col sm:flex-row items-center gap-0.5 sm:gap-2 opacity-0 pointer-events-none transition-opacity">
+                                            <div
+                                                class="flex border t-border-main rounded-lg overflow-hidden order-1 sm:order-2">
+                                                <button onclick="window.ListSearch.navigate(-1)"
+                                                    class="p-1 sm:p-1.5 hover:t-bg-track t-text-main transition-colors border-r t-border-main"
+                                                    title="上一个">
+                                                    <i class="fas fa-chevron-left text-[10px]"></i>
+                                                </button>
+                                                <button onclick="window.ListSearch.navigate(1)"
+                                                    class="p-1 sm:p-1.5 hover:t-bg-track t-text-main transition-colors"
+                                                    title="下一个">
+                                                    <i class="fas fa-chevron-right text-[10px]"></i>
+                                                </button>
+                                            </div>
+                                            <span id="sl-local-search-count"
+                                                class="text-[9px] sm:text-xs font-mono t-text-muted order-2 sm:order-1 leading-none">0/0</span>
+                                        </div>
+
+                                        <!-- Filter Toggle -->
+                                        <div class="flex items-center gap-3 ml-auto">
+                                            <label class="flex items-center cursor-pointer group">
+                                                <span
+                                                    class="text-xs t-text-muted mr-2 group-hover:t-text-main transition-colors hidden sm:block">仅显示匹配项</span>
+                                                <div class="relative inline-flex items-center">
+                                                    <input type="checkbox" id="sl-local-search-filter"
+                                                        class="sr-only peer"
+                                                        onchange="window.ListSearch.toggleFilter()">
+                                                    <div
+                                                        class="w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500 transition-all">
+                                                    </div>
+                                                </div>
+                                            </label>
+                                            <button onclick="window.ListSearch.toggleBar(false)"
+                                                class="p-2 t-text-muted hover:text-red-500 transition-colors"
+                                                title="关闭搜索">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div id="sl-detail-list"
                                     class="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar pb-20">
@@ -1192,15 +1348,17 @@
                                 </div>
 
                                 <!-- 公开源开关 -->
-                                <div
-                                    class="mt-3 flex items-center justify-between t-bg-main p-3 rounded-lg border t-border-main">
-                                    <span class="text-sm t-text-muted font-medium flex items-center">
-                                        启用公开源 (Public List)
-                                        <span class="setting-tooltip-trigger ml-1">
-                                            <i class="fas fa-question-circle"></i>
-                                            <span class="setting-tooltip-content">开启后，您上传的自定义源将可以被其他用户在公共源列表中看到。</span>
-                                        </span>
-                                    </span>
+                                <div class="mt-4 flex items-center justify-between">
+                                    <div>
+                                        <div class="text-sm font-bold t-text-main flex items-center">
+                                            启用公开源 (Public List)
+                                            <span class="setting-tooltip-trigger ml-1">
+                                                <i class="fas fa-question-circle"></i>
+                                                <span
+                                                    class="setting-tooltip-content">开启后，您上传的自定义源将可以被其他用户在公共源列表中看到。</span>
+                                            </span>
+                                        </div>
+                                    </div>
                                     <label class="relative inline-flex items-center cursor-pointer">
                                         <input type="checkbox" id="toggle-public-sources" class="sr-only peer"
                                             onchange="togglePublicSourcesSetting()">
@@ -1247,18 +1405,19 @@
                             </div>
 
                             <div>
-                                <h3 class="font-medium text-emerald-600 mb-2">网络设置 (Network Settings)</h3>
-                                <div class="space-y-3">
-                                    <div
-                                        class="flex items-center justify-between t-bg-main p-3 rounded-lg border t-border-main">
-                                        <span class="text-sm t-text-muted font-medium flex items-center">
-                                            播放音乐代理 (Proxy Playback)
-                                            <span class="setting-tooltip-trigger ml-1">
-                                                <i class="fas fa-question-circle"></i>
-                                                <span class="setting-tooltip-content">通过服务器端代理解析和播放音乐，有效解决部分源的 IP
-                                                    限制问题。</span>
-                                            </span>
-                                        </span>
+                                <h3 class="font-medium text-emerald-600 mb-4">网络设置 (Network Settings)</h3>
+                                <div class="space-y-4">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <div class="text-sm font-bold t-text-main flex items-center">
+                                                播放音乐代理 (Proxy Playback)
+                                                <span class="setting-tooltip-trigger ml-1">
+                                                    <i class="fas fa-question-circle"></i>
+                                                    <span class="setting-tooltip-content">通过服务器端代理解析和播放音乐，有效解决部分源的 IP
+                                                        限制问题。</span>
+                                                </span>
+                                            </div>
+                                        </div>
                                         <label class="relative inline-flex items-center cursor-pointer">
                                             <input type="checkbox" id="toggle-proxy-playback" class="sr-only peer"
                                                 onchange="changeProxyPlayback(this.checked)">
@@ -1267,15 +1426,16 @@
                                             </div>
                                         </label>
                                     </div>
-                                    <div
-                                        class="flex items-center justify-between t-bg-main p-3 rounded-lg border t-border-main">
-                                        <span class="text-sm t-text-muted font-medium flex items-center">
-                                            下载音乐代理 (Proxy Download)
-                                            <span class="setting-tooltip-trigger ml-1">
-                                                <i class="fas fa-question-circle"></i>
-                                                <span class="setting-tooltip-content">通过服务器端代理执行音乐下载操作。</span>
-                                            </span>
-                                        </span>
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <div class="text-sm font-bold t-text-main flex items-center">
+                                                下载音乐代理 (Proxy Download)
+                                                <span class="setting-tooltip-trigger ml-1">
+                                                    <i class="fas fa-question-circle"></i>
+                                                    <span class="setting-tooltip-content">通过服务器端代理执行音乐下载操作。</span>
+                                                </span>
+                                            </div>
+                                        </div>
                                         <label class="relative inline-flex items-center cursor-pointer">
                                             <input type="checkbox" id="toggle-proxy-download" class="sr-only peer"
                                                 onchange="changeProxyDownload(this.checked)">
@@ -1284,16 +1444,17 @@
                                             </div>
                                         </label>
                                     </div>
-                                    <div
-                                        class="flex items-center justify-between t-bg-main p-3 rounded-lg border t-border-main">
-                                        <span class="text-sm t-text-muted font-medium flex items-center">
-                                            自动代理 (Auto Proxy)
-                                            <span class="setting-tooltip-trigger ml-1">
-                                                <i class="fas fa-question-circle"></i>
-                                                <span class="setting-tooltip-content">仅在 HTTPS 浏览器环境下，获取到非安全 (HTTP)
-                                                    链接时自动检测升级HTTPS或启用代理解析，确保播放成功。</span>
-                                            </span>
-                                        </span>
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <div class="text-sm font-bold t-text-main flex items-center">
+                                                自动代理 (Auto Proxy)
+                                                <span class="setting-tooltip-trigger ml-1">
+                                                    <i class="fas fa-question-circle"></i>
+                                                    <span class="setting-tooltip-content">仅在 HTTPS 浏览器环境下，获取到非安全 (HTTP)
+                                                        链接时自动检测升级HTTPS或启用代理解析，确保播放成功。</span>
+                                                </span>
+                                            </div>
+                                        </div>
                                         <label class="relative inline-flex items-center cursor-pointer">
                                             <input type="checkbox" id="toggle-auto-proxy" class="sr-only peer"
                                                 onchange="changeAutoProxy(this.checked)">
@@ -1364,13 +1525,39 @@
                                 <div id="sync-status" class="mt-3 text-sm text-gray-500 flex items-center gap-2">
                                     <i class="fas fa-circle text-[8px] text-gray-300"></i> 状态: 未连接
                                 </div>
+                            </div>
 
-                                <!-- [New] Save Settings to Server Toggle -->
-                                <div id="sync-settings-file-option" class="mt-4 pt-3 border-t t-border-main">
+                            <!-- Auto Update Settings -->
+                            <div class="pt-6 border-t t-border-main">
+                                <h3 class="font-medium text-emerald-600 mb-4">自动更新 (Auto Update)</h3>
+
+                                <div class="space-y-4">
+                                    <!-- [New] Auto Update Network List -->
                                     <div class="flex items-center justify-between">
                                         <div>
-                                            <div class="text-xs font-bold t-text-main flex items-center">
-                                                同步账号设置到文件
+                                            <div class="text-sm font-bold t-text-main flex items-center">
+                                                自动更新网络歌单 (Auto Update List)
+                                                <span class="setting-tooltip-trigger ml-1">
+                                                    <i class="fas fa-question-circle"></i>
+                                                    <span
+                                                        class="setting-tooltip-content">开启后，点击进入网络歌单时将自动尝试同步远端内容。注意：此操作可能会覆盖本地对该歌单的修改。</span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" id="setting-auto-update-list" class="sr-only peer"
+                                                onchange="updateSetting('autoUpdateNetworkList', this.checked)">
+                                            <div
+                                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
+                                            </div>
+                                        </label>
+                                    </div>
+
+                                    <!-- [Renamed] Save Settings to Server Toggle -->
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <div class="text-sm font-bold t-text-main flex items-center">
+                                                自动同步账号设置到文件
                                                 <span class="setting-tooltip-trigger ml-1">
                                                     <i class="fas fa-question-circle"></i>
                                                     <span
@@ -1383,7 +1570,7 @@
                                                 class="sr-only peer"
                                                 onchange="updateSetting('saveAccountSettingsToFile', this.checked)">
                                             <div
-                                                class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500 transition-all">
+                                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
                                             </div>
                                         </label>
                                     </div>
@@ -1450,6 +1637,27 @@
                                         <label class="relative inline-flex items-center cursor-pointer">
                                             <input type="checkbox" id="setting-enable-server-cache" class="sr-only peer"
                                                 onchange="updateSetting('enableServerCache', this.checked)">
+                                            <div
+                                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
+                                            </div>
+                                        </label>
+                                    </div>
+
+                                    <!-- Prefer Cached Playback Settings -->
+                                    <div class="flex items-center justify-between pb-3 border-b t-border-main">
+                                        <div>
+                                            <div class="text-sm font-bold t-text-main flex items-center">
+                                                优先播放缓存歌曲 (Prefer Cached Song)
+                                                <span class="setting-tooltip-trigger ml-1">
+                                                    <i class="fas fa-question-circle"></i>
+                                                    <span
+                                                        class="setting-tooltip-content">如果歌曲已缓存，则优先从本地加载。即使“缓存歌曲文件”关闭，已存在的缓存仍可使用。</span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" id="setting-prefer-server-cache" class="sr-only peer"
+                                                onchange="updateSetting('preferServerCache', this.checked)">
                                             <div
                                                 class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
                                             </div>
@@ -1527,9 +1735,9 @@
                                             class="py-2 px-3 t-bg-panel border t-border-main t-text-muted hover:text-blue-600 hover:border-blue-200 rounded-lg text-xs font-bold transition-colors">
                                             <i class="fas fa-sync-alt mr-1"></i> 刷新缓存统计
                                         </button>
-                                        <button onclick="clearServerCache()"
-                                            class="py-2 px-3 t-bg-panel border t-border-main t-text-muted hover:text-red-600 hover:border-red-200 rounded-lg text-xs font-bold transition-colors">
-                                            <i class="fas fa-server mr-1"></i> 清除服务器缓存
+                                        <button onclick="toggleCacheDrawer()"
+                                            class="py-2 px-3 t-bg-panel border t-border-main t-text-muted hover:text-blue-600 hover:border-blue-200 rounded-lg text-xs font-bold transition-colors">
+                                            <i class="fas fa-server mr-1"></i> 管理服务器缓存
                                         </button>
                                     </div>
 
@@ -2090,255 +2298,291 @@
                                 <h3 class="font-bold t-text-main text-lg mb-4 flex items-center">
                                     <i class="fas fa-microchip mr-2 text-emerald-500"></i> 播放逻辑 (Playback Logic)
                                 </h3>
-                                <!-- Change Playlist on Search Play -->
-                                <div
-                                    class="t-bg-panel rounded-xl border t-border-main p-4 hover:shadow-sm transition-shadow">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <h4 class="text-sm font-bold t-text-main flex items-center">
-                                                播放搜索歌曲时切换歌单 (Switch Play Context)
-                                                <span class="setting-tooltip-trigger">
-                                                    <i class="fas fa-question-circle"></i>
-                                                    <span class="setting-tooltip-content">
-                                                        开启：播放搜索出的歌曲后，播放列表切换为搜索结果。<br>
-                                                        关闭：播放搜索出的歌曲后，播放列表切换为默认列表。<br>
-                                                        <span class="text-emerald-500 font-medium">*
-                                                            提示：所有搜索到的歌曲播放时都会自动加入默认列表</span>
-                                                    </span>
-                                                </span>
-                                            </h4>
-                                        </div>
-                                        <label class="relative inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" id="setting-switch-playlist-search"
-                                                class="sr-only peer"
-                                                onchange="updateSetting('switchPlaylistOnSearchPlay', this.checked)">
-                                            <div
-                                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <!-- Pre-fetching Setting -->
-                                <div
-                                    class="t-bg-panel rounded-xl border t-border-main p-4 hover:shadow-sm transition-shadow">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <h4 class="text-sm font-bold t-text-main flex items-center">
-                                                音乐预读机制 (Pre-fetching)
-                                                <span class="setting-tooltip-trigger">
-                                                    <i class="fas fa-question-circle"></i>
-                                                    <span class="setting-tooltip-content">
-                                                        开启：在一首歌曲开始播放时，系统将自动在后台预解析并读取下一首歌曲的播放内容。预读过程中会自动跳过无法播放的歌曲。<br>
-                                                        <span class="text-emerald-500 font-medium">*
-                                                            极大提升移动端后台播放的连续性，但可能会产生少量额外流量。</span>
-                                                    </span>
-                                                </span>
-                                            </h4>
-                                        </div>
-                                        <label class="relative inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" id="setting-enable-preloader" class="sr-only peer"
-                                                onchange="updateSetting('enablePreloader', this.checked)">
-                                            <div
-                                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <!-- Change Playlist on Song List Play -->
-                                <div
-                                    class="t-bg-panel rounded-xl border t-border-main p-4 hover:shadow-sm transition-shadow">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <h4 class="text-sm font-bold t-text-main flex items-center">
-                                                播放歌单歌曲时切换歌单 (Switch Song List Play Context)
-                                                <span class="setting-tooltip-trigger">
-                                                    <i class="fas fa-question-circle"></i>
-                                                    <span class="setting-tooltip-content">
-                                                        开启：播放歌单中的单个歌曲后，播放列表切换为歌单列表。<br>
-                                                        关闭：播放歌单中的单个歌曲后，播放列表切换为默认列表。<br>
-                                                        <span class="text-emerald-500 font-medium">*
-                                                            提示：所有歌单歌曲播放时会自动加入默认列表</span>
-                                                    </span>
-                                                </span>
-                                            </h4>
-                                        </div>
-                                        <label class="relative inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" id="setting-switch-playlist-songlist"
-                                                class="sr-only peer"
-                                                onchange="updateSetting('switchPlaylistOnSongListPlay', this.checked)">
-                                            <div
-                                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <!-- Auto Resume -->
-                                <div
-                                    class="t-bg-panel rounded-xl border t-border-main p-4 hover:shadow-sm transition-shadow">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <h4 class="text-sm font-bold t-text-main flex items-center">
-                                                自动恢复进度 (Auto-Resume)
-                                                <span class="setting-tooltip-trigger">
-                                                    <i class="fas fa-question-circle"></i>
-                                                    <span class="setting-tooltip-content">
-                                                        自动恢复最后播放的歌曲、进度及列表。会自动跳转到上次对应的歌单选项卡。
-                                                    </span>
-                                                </span>
-                                            </h4>
-                                        </div>
-                                        <label class="relative inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" id="setting-auto-resume" class="sr-only peer"
-                                                onchange="updateSetting('autoResume', this.checked)">
-                                            <div
-                                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <div
-                                    class="t-bg-panel rounded-xl border t-border-main p-4 hover:shadow-sm transition-shadow">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <h4 class="text-sm font-bold t-text-main flex items-center">
-                                                音频淡入淡出 (Crossfade)
-                                                <span class="setting-tooltip-trigger ml-1">
-                                                    <i class="fas fa-question-circle"></i>
-                                                    <span
-                                                        class="setting-tooltip-content">切换歌曲时，音量平滑淡出和淡入，减少切换的突兀感。</span>
-                                                </span>
-                                            </h4>
-                                        </div>
-                                        <label class="relative inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" id="setting-enable-crossfade" class="sr-only peer"
-                                                onchange="updateSetting('enableCrossfade', this.checked)">
-                                            <div
-                                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <!-- Keep Screen Awake -->
-                                <div
-                                    class="t-bg-panel rounded-xl border t-border-main p-4 hover:shadow-sm transition-shadow">
-                                    <div class="flex items-center justify-between mb-4">
-                                        <div>
-                                            <h4 class="text-sm font-bold t-text-main flex items-center">
-                                                保持屏幕常亮 (Keep Screen Awake)
-                                                <span class="setting-tooltip-trigger ml-1">
-                                                    <i class="fas fa-question-circle"></i>
-                                                    <span
-                                                        class="setting-tooltip-content">防止由于系统自动息屏导致的播放中断，兼容绝大多数移动端设备。</span>
-                                                </span>
-                                            </h4>
-                                        </div>
-                                        <label class="relative inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" id="setting-keep-screen-awake" class="sr-only peer"
-                                                onchange="updateSetting('keepScreenAwake', this.checked)">
-                                            <div
-                                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <!-- Auto Skip on Error -->
-                                <div
-                                    class="t-bg-panel rounded-xl border t-border-main p-4 hover:shadow-sm transition-shadow">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <h4 class="text-sm font-bold t-text-main flex items-center">
-                                                失败自动下一曲 (Auto-Skip on Error)
-                                                <span class="setting-tooltip-trigger">
-                                                    <i class="fas fa-question-circle"></i>
-                                                    <span class="setting-tooltip-content">
-                                                        当前歌曲播放失败3s后自动播放下一曲。<br>
-                                                        <span class="text-emerald-500 font-medium">* 开启：自动尝试下一首 |
-                                                            关闭：暂停播放</span>
-                                                    </span>
-                                                </span>
-                                            </h4>
-                                        </div>
-                                        <label class="relative inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" id="setting-auto-skip-on-error" class="sr-only peer"
-                                                onchange="updateSetting('enableAutoSkipOnError', this.checked)">
-                                            <div
-                                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
-                                            </div>
-                                        </label>
-                                    </div>
-                                </div>
-
-                                <!-- Keyboard Shortcuts -->
-                                <div
-                                    class="t-bg-panel rounded-xl border t-border-main p-4 hover:shadow-sm transition-shadow">
-                                    <div class="flex items-center justify-between mb-4">
-                                        <div>
-                                            <h4 class="text-sm font-bold t-text-main flex items-center">
-                                                按键快捷方式 (Keyboard Shortcuts)
-                                                <span class="setting-tooltip-trigger ml-1">
-                                                    <i class="fas fa-question-circle"></i>
-                                                    <span
-                                                        class="setting-tooltip-content">启用后可使用键盘快捷键控制音乐播放（仅电脑版）。</span>
-                                                </span>
-                                            </h4>
-                                        </div>
-                                        <label class="relative inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" id="setting-enable-shortcuts" class="sr-only peer"
-                                                onchange="updateSetting('enableKeyboardShortcuts', this.checked)">
-                                            <div
-                                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
-                                            </div>
-                                        </label>
-                                    </div>
+                                <div class="space-y-4">
+                                    <!-- Change Playlist on Search Play -->
                                     <div
-                                        class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-[10px] t-text-muted border-t t-border-main pt-3">
-                                        <div class="flex justify-between items-center"><span>播放/暂停
-                                                (Play/Pause)</span>
-                                            <span
-                                                class="t-bg-track px-2 py-0.5 rounded-md font-mono border t-border-main">Space</span>
+                                        class="t-bg-panel rounded-xl border t-border-main p-4 hover:shadow-sm transition-shadow">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <h4 class="text-sm font-bold t-text-main flex items-center">
+                                                    播放搜索歌曲时切换歌单 (Switch Play Context)
+                                                    <span class="setting-tooltip-trigger">
+                                                        <i class="fas fa-question-circle"></i>
+                                                        <span class="setting-tooltip-content">
+                                                            开启：播放搜索出的歌曲后，播放列表切换为搜索结果。<br>
+                                                            关闭：播放搜索出的歌曲后，播放列表切换为默认列表。<br>
+                                                            <span class="text-emerald-500 font-medium">*
+                                                                提示：所有搜索到的歌曲播放时都会自动加入默认列表</span>
+                                                        </span>
+                                                    </span>
+                                                </h4>
+                                            </div>
+                                            <label class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" id="setting-switch-playlist-search"
+                                                    class="sr-only peer"
+                                                    onchange="updateSetting('switchPlaylistOnSearchPlay', this.checked)">
+                                                <div
+                                                    class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
+                                                </div>
+                                            </label>
                                         </div>
-                                        <div class="flex justify-between items-center"><span>上一曲/下一曲
-                                                (Prev/Next)</span>
-                                            <span
-                                                class="t-bg-track px-2 py-0.5 rounded-md font-mono border t-border-main">[
-                                                / ]</span>
+                                    </div>
+
+                                    <!-- Pre-fetching Setting -->
+                                    <div
+                                        class="t-bg-panel rounded-xl border t-border-main p-4 hover:shadow-sm transition-shadow">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <h4 class="text-sm font-bold t-text-main flex items-center">
+                                                    音乐预读机制 (Pre-fetching)
+                                                    <span class="setting-tooltip-trigger">
+                                                        <i class="fas fa-question-circle"></i>
+                                                        <span class="setting-tooltip-content">
+                                                            开启：在一首歌曲开始播放时，系统将自动在后台预解析并读取下一首歌曲的播放内容。预读过程中会自动跳过无法播放的歌曲。<br>
+                                                            <span class="text-emerald-500 font-medium">*
+                                                                极大提升移动端后台播放的连续性，但可能会产生少量额外流量。</span>
+                                                        </span>
+                                                    </span>
+                                                </h4>
+                                            </div>
+                                            <label class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" id="setting-enable-preloader"
+                                                    class="sr-only peer"
+                                                    onchange="updateSetting('enablePreloader', this.checked)">
+                                                <div
+                                                    class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
+                                                </div>
+                                            </label>
                                         </div>
-                                        <div class="flex justify-between items-center"><span>音量加/减 (Volume)</span>
-                                            <span
-                                                class="t-bg-track px-2 py-0.5 rounded-md font-mono border t-border-main">↑
-                                                / ↓</span>
+                                    </div>
+
+                                    <!-- Change Playlist on Song List Play -->
+                                    <div
+                                        class="t-bg-panel rounded-xl border t-border-main p-4 hover:shadow-sm transition-shadow">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <h4 class="text-sm font-bold t-text-main flex items-center">
+                                                    播放歌单歌曲时切换歌单 (Switch Song List Play Context)
+                                                    <span class="setting-tooltip-trigger">
+                                                        <i class="fas fa-question-circle"></i>
+                                                        <span class="setting-tooltip-content">
+                                                            开启：播放歌单中的单个歌曲后，播放列表切换为歌单列表。<br>
+                                                            关闭：播放歌单中的单个歌曲后，播放列表切换为默认列表。<br>
+                                                            <span class="text-emerald-500 font-medium">*
+                                                                提示：所有歌单歌曲播放时会自动加入默认列表</span>
+                                                        </span>
+                                                    </span>
+                                                </h4>
+                                            </div>
+                                            <label class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" id="setting-switch-playlist-songlist"
+                                                    class="sr-only peer"
+                                                    onchange="updateSetting('switchPlaylistOnSongListPlay', this.checked)">
+                                                <div
+                                                    class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
+                                                </div>
+                                            </label>
                                         </div>
-                                        <div class="flex justify-between items-center"><span>快进/后退 (Seek)</span>
-                                            <div class="flex flex-col items-end"><span
-                                                    class="t-bg-track px-2 py-0.5 rounded-md font-mono border t-border-main">→
-                                                    / ←</span><span class="text-[8px] text-emerald-500/60 mt-0.5">Hold
-                                                    for smooth seek</span></div>
+                                    </div>
+
+                                    <!-- Auto Resume -->
+                                    <div
+                                        class="t-bg-panel rounded-xl border t-border-main p-4 hover:shadow-sm transition-shadow">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <h4 class="text-sm font-bold t-text-main flex items-center">
+                                                    自动恢复进度 (Auto-Resume)
+                                                    <span class="setting-tooltip-trigger">
+                                                        <i class="fas fa-question-circle"></i>
+                                                        <span class="setting-tooltip-content">
+                                                            自动恢复最后播放的歌曲、进度及列表。会自动跳转到上次对应的歌单选项卡。
+                                                        </span>
+                                                    </span>
+                                                </h4>
+                                            </div>
+                                            <label class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" id="setting-auto-resume" class="sr-only peer"
+                                                    onchange="updateSetting('autoResume', this.checked)">
+                                                <div
+                                                    class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
+                                                </div>
+                                            </label>
                                         </div>
-                                        <div class="flex justify-between items-center"><span>切换页签 (Switch
-                                                Tab)</span>
-                                            <span
-                                                class="t-bg-track px-2 py-0.5 rounded-md font-mono border t-border-main">Alt
-                                                + 1-4</span>
+                                    </div>
+
+                                    <div
+                                        class="t-bg-panel rounded-xl border t-border-main p-4 hover:shadow-sm transition-shadow">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <h4 class="text-sm font-bold t-text-main flex items-center">
+                                                    音频淡入淡出 (Crossfade)
+                                                    <span class="setting-tooltip-trigger ml-1">
+                                                        <i class="fas fa-question-circle"></i>
+                                                        <span
+                                                            class="setting-tooltip-content">切换歌曲时，音量平滑淡出和淡入，减少切换的突兀感。</span>
+                                                    </span>
+                                                </h4>
+                                            </div>
+                                            <label class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" id="setting-enable-crossfade"
+                                                    class="sr-only peer"
+                                                    onchange="updateSetting('enableCrossfade', this.checked)">
+                                                <div
+                                                    class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
+                                                </div>
+                                            </label>
                                         </div>
-                                        <div class="flex justify-between items-center"><span>歌词页开关 (Lyrics)</span>
-                                            <span
-                                                class="t-bg-track px-2 py-0.5 rounded-md font-mono border t-border-main">L</span>
+                                    </div>
+
+                                    <!-- Keep Screen Awake -->
+                                    <div
+                                        class="t-bg-panel rounded-xl border t-border-main p-4 hover:shadow-sm transition-shadow">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <h4 class="text-sm font-bold t-text-main flex items-center">
+                                                    保持屏幕常亮 (Keep Screen Awake)
+                                                    <span class="setting-tooltip-trigger ml-1">
+                                                        <i class="fas fa-question-circle"></i>
+                                                        <span
+                                                            class="setting-tooltip-content">防止由于系统自动息屏导致的播放中断，兼容绝大多数移动端设备。</span>
+                                                    </span>
+                                                </h4>
+                                            </div>
+                                            <label class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" id="setting-keep-screen-awake"
+                                                    class="sr-only peer"
+                                                    onchange="updateSetting('keepScreenAwake', this.checked)">
+                                                <div
+                                                    class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
+                                                </div>
+                                            </label>
                                         </div>
-                                        <div class="flex justify-between items-center"><span>显示底部波形
-                                                (Visualizer)</span>
-                                            <span
-                                                class="t-bg-track px-2 py-0.5 rounded-md font-mono border t-border-main">F</span>
+                                    </div>
+
+                                    <!-- Auto Switch Source -->
+                                    <div
+                                        class="t-bg-panel rounded-xl border t-border-main p-4 hover:shadow-sm transition-shadow">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <h4 class="text-sm font-bold t-text-main flex items-center">
+                                                    自动尝试换源 (Auto-Switch Source)
+                                                    <span class="setting-tooltip-trigger">
+                                                        <i class="fas fa-question-circle"></i>
+                                                        <span class="setting-tooltip-content">
+                                                            当前音质及其所有降级音质解析失败后，根据“歌名+歌手+时长”在全网精准匹配同名歌曲尝试播放。<br>
+                                                            <span class="text-emerald-500 font-medium">* 开启：自动搜索备选音源 |
+                                                                关闭：原始源失效即报错</span>
+                                                        </span>
+                                                    </span>
+                                                </h4>
+                                            </div>
+                                            <label class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" id="setting-auto-switch-source"
+                                                    class="sr-only peer"
+                                                    onchange="updateSetting('enableAutoSwitchSource', this.checked)">
+                                                <div
+                                                    class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
+                                                </div>
+                                            </label>
                                         </div>
-                                        <div class="flex justify-between items-center"><span>显示详情波形 (Detail
-                                                Vis)</span>
-                                            <span
-                                                class="t-bg-track px-2 py-0.5 rounded-md font-mono border t-border-main">G</span>
+                                    </div>
+
+                                    <!-- Auto Skip on Error -->
+                                    <div
+                                        class="t-bg-panel rounded-xl border t-border-main p-4 hover:shadow-sm transition-shadow">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <h4 class="text-sm font-bold t-text-main flex items-center">
+                                                    失败自动下一曲 (Auto-Skip on Error)
+                                                    <span class="setting-tooltip-trigger">
+                                                        <i class="fas fa-question-circle"></i>
+                                                        <span class="setting-tooltip-content">
+                                                            当前歌曲播放失败3s后自动播放下一曲。<br>
+                                                            <span class="text-emerald-500 font-medium">* 开启：自动尝试下一首 |
+                                                                关闭：暂停播放</span>
+                                                        </span>
+                                                    </span>
+                                                </h4>
+                                            </div>
+                                            <label class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" id="setting-auto-skip-on-error"
+                                                    class="sr-only peer"
+                                                    onchange="updateSetting('enableAutoSkipOnError', this.checked)">
+                                                <div
+                                                    class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Keyboard Shortcuts -->
+                                    <div
+                                        class="t-bg-panel rounded-xl border t-border-main p-4 hover:shadow-sm transition-shadow">
+                                        <div class="flex items-center justify-between mb-4">
+                                            <div>
+                                                <h4 class="text-sm font-bold t-text-main flex items-center">
+                                                    按键快捷方式 (Keyboard Shortcuts)
+                                                    <span class="setting-tooltip-trigger ml-1">
+                                                        <i class="fas fa-question-circle"></i>
+                                                        <span
+                                                            class="setting-tooltip-content">启用后可使用键盘快捷键控制音乐播放（仅电脑版）。</span>
+                                                    </span>
+                                                </h4>
+                                            </div>
+                                            <label class="relative inline-flex items-center cursor-pointer">
+                                                <input type="checkbox" id="setting-enable-shortcuts"
+                                                    class="sr-only peer"
+                                                    onchange="updateSetting('enableKeyboardShortcuts', this.checked)">
+                                                <div
+                                                    class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
+                                                </div>
+                                            </label>
+                                        </div>
+                                        <div
+                                            class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-[10px] t-text-muted border-t t-border-main pt-3">
+                                            <div class="flex justify-between items-center"><span>播放/暂停
+                                                    (Play/Pause)</span>
+                                                <span
+                                                    class="t-bg-track px-2 py-0.5 rounded-md font-mono border t-border-main">Space</span>
+                                            </div>
+                                            <div class="flex justify-between items-center"><span>上一曲/下一曲
+                                                    (Prev/Next)</span>
+                                                <span
+                                                    class="t-bg-track px-2 py-0.5 rounded-md font-mono border t-border-main">[
+                                                    / ]</span>
+                                            </div>
+                                            <div class="flex justify-between items-center"><span>音量加/减 (Volume)</span>
+                                                <span
+                                                    class="t-bg-track px-2 py-0.5 rounded-md font-mono border t-border-main">↑
+                                                    / ↓</span>
+                                            </div>
+                                            <div class="flex justify-between items-center"><span>快进/后退 (Seek)</span>
+                                                <div class="flex flex-col items-end"><span
+                                                        class="t-bg-track px-2 py-0.5 rounded-md font-mono border t-border-main">→
+                                                        / ←</span><span
+                                                        class="text-[8px] text-emerald-500/60 mt-0.5">Hold
+                                                        for smooth seek</span></div>
+                                            </div>
+                                            <div class="flex justify-between items-center"><span>切换页签 (Switch
+                                                    Tab)</span>
+                                                <span
+                                                    class="t-bg-track px-2 py-0.5 rounded-md font-mono border t-border-main">Alt
+                                                    + 1-4</span>
+                                            </div>
+                                            <div class="flex justify-between items-center"><span>歌词页开关 (Lyrics)</span>
+                                                <span
+                                                    class="t-bg-track px-2 py-0.5 rounded-md font-mono border t-border-main">L</span>
+                                            </div>
+                                            <div class="flex justify-between items-center"><span>显示底部波形
+                                                    (Visualizer)</span>
+                                                <span
+                                                    class="t-bg-track px-2 py-0.5 rounded-md font-mono border t-border-main">F</span>
+                                            </div>
+                                            <div class="flex justify-between items-center"><span>显示详情波形 (Detail
+                                                    Vis)</span>
+                                                <span
+                                                    class="t-bg-track px-2 py-0.5 rounded-md font-mono border t-border-main">G</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -2441,8 +2685,9 @@
             <!-- Left: Image -->
             <div id="mobile-player-cover-container" ondblclick="toggleDetailCover()"
                 class="w-auto h-auto max-w-[48vw] max-h-[32vh] [@media(max-height:500px)]:max-h-[40vh] aspect-square md:w-[60vh] md:h-[60vh] md:max-w-[35rem] md:max-h-[35rem] md:min-w-[20rem] md:min-h-[20rem] flex-shrink-0 shadow-2xl rounded-3xl overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] border-4 border-white/20 origin-top t-bg-track cursor-pointer">
-                <img id="detail-cover" src="/music/assets/logo.svg" onerror="this.src='/music/assets/logo.svg'"
-                    class="w-full h-full object-cover">
+                <img id="detail-cover" src="/music/assets/logo.svg"
+                    onerror="this.src='/music/assets/logo.svg'; this.classList.add('is-placeholder');"
+                    class="w-full h-full object-cover dynamic-logo is-placeholder">
             </div>
 
             <!-- Right: Lyrics -->
@@ -2451,9 +2696,9 @@
                 <!-- Song Info -->
                 <div class="mb-4 md:mb-8 text-center md:text-left px-4 md:pl-6 select-none transition-all duration-300 cursor-pointer"
                     onclick="if(window.innerWidth < 768) { toggleDetailCover(); event.stopPropagation(); }">
-                    <div id="detail-title-container" class="w-full overflow-hidden whitespace-nowrap mb-1">
+                    <div id="detail-title-container" class="overflow-hidden whitespace-nowrap mb-1">
                         <div id="detail-title"
-                            class="inline-block text-2xl md:text-4xl font-black t-text-main drop-shadow-sm max-w-full truncate">
+                            class="inline-block text-2xl md:text-4xl font-black t-text-main drop-shadow-sm max-w-full truncate w-fit mx-auto md:mx-0">
                             Song Name
                         </div>
                     </div>
@@ -2505,8 +2750,9 @@
             class="w-full md:w-1/4 flex items-start md:items-center gap-2 md:gap-4 mb-2 md:mb-0 pr-8 md:pr-0 transition-all duration-300">
             <div
                 class="w-12 h-12 md:w-14 md:h-14 bg-gray-200 rounded-md overflow-hidden shadow-sm relative group flex-shrink-0">
-                <img id="player-cover" src="/music/assets/logo.svg" onerror="this.src='/music/assets/logo.svg'"
-                    class="w-full h-full object-cover dynamic-logo" alt="专辑封面">
+                <img id="player-cover" src="/music/assets/logo.svg"
+                    onerror="this.src='/music/assets/logo.svg'; this.classList.add('is-placeholder');"
+                    class="w-full h-full object-cover dynamic-logo is-placeholder" alt="专辑封面">
                 <div class="absolute inset-0 bg-black/30 hidden group-hover:flex items-center justify-center cursor-pointer"
                     onclick="toggleLyrics()">
                     <i class="fas fa-expand text-white"></i>
@@ -2532,6 +2778,12 @@
                 <!-- Like button -->
                 <button id="player-like-btn" class="text-gray-300 hover:text-red-500 transition-colors">
                     <i class="fas fa-heart text-base md:text-lg"></i>
+                </button>
+                <!-- Download Button (Mobile) -->
+                <button
+                    class="md:hidden text-gray-500 hover:text-emerald-600 text-[10px] font-bold border border-gray-300 rounded px-1 py-0"
+                    onclick="handleDownloadClick(event)" title="下载/缓存">
+                    <i class="fas fa-download text-[10px]"></i>
                 </button>
                 <!-- Sound Effects Button (Mobile) -->
                 <button
@@ -2672,6 +2924,12 @@
         <!-- Volume & Lyrics (Hidden on small mobile if needed, or simplified) -->
         <div
             class="w-full md:w-1/4 hidden md:flex flex-wrap items-center justify-end gap-x-2 gap-y-2 lg:gap-4 order-2 md:order-none mr-8">
+            <!-- Download Button (Desktop) -->
+            <button id="btn-player-download"
+                class="text-gray-500 hover:text-emerald-600 text-sm font-bold border border-gray-300 rounded px-2 py-0.5 transition-colors"
+                onclick="handleDownloadClick(event)" title="下载/缓存">
+                <i class="fas fa-download text-sm"></i>
+            </button>
             <!-- Sound Effects Button -->
             <button id="btn-sound-effects"
                 class="text-gray-500 hover:text-emerald-600 text-sm font-bold border border-gray-300 rounded px-2 py-0.5 transition-colors"
@@ -3321,10 +3579,16 @@
         <!-- Header -->
         <div class="p-6 border-b t-border-main flex items-center justify-between">
             <div class="flex flex-col">
-                <h3 class="text-xl font-black t-text-main flex items-center gap-2">
-                    <i class="fas fa-list text-emerald-500"></i>
-                    播放队列
-                </h3>
+                <div class="flex items-center gap-2">
+                    <h3 class="text-xl font-black t-text-main flex items-center gap-2">
+                        <i class="fas fa-list text-emerald-500"></i>
+                        播放队列
+                    </h3>
+                    <button onclick="scrollToCurrentSongInQueue()" title="定位当前播放"
+                        class="w-6 h-6 flex items-center justify-center text-emerald-500 hover:bg-emerald-500/10 rounded-full transition-all">
+                        <i class="fas fa-crosshairs text-xs"></i>
+                    </button>
+                </div>
                 <p id="queue-count" class="text-[10px] t-text-muted font-bold uppercase tracking-widest mt-1">0 SONGS
                 </p>
             </div>
@@ -3349,6 +3613,81 @@
         <!-- List Area -->
         <div id="queue-list" class="flex-1 overflow-y-auto no-scrollbar custom-scrollbar p-2 space-y-1">
             <!-- Items injected by JS -->
+        </div>
+    </div>
+
+    <!-- Cache Management Drawer (服务器缓存管理) -->
+    <div id="cache-drawer"
+        class="fixed inset-y-0 right-0 w-full md:w-96 t-bg-panel/95 backdrop-blur-xl z-[60] shadow-[-10px_0_30px_rgba(0,0,0,0.1)] transform translate-x-full transition-transform duration-300 ease-out border-l t-border-main flex flex-col">
+        <!-- Header -->
+        <div class="p-6 border-b t-border-main flex items-center justify-between">
+            <div class="flex flex-col">
+                <h3 class="text-xl font-black t-text-main flex items-center gap-2">
+                    <i class="fas fa-server text-blue-500"></i>
+                    缓存管理
+                </h3>
+                <p id="cache-list-count" class="text-[10px] t-text-muted font-bold uppercase tracking-widest mt-1">0
+                    CACHED FILES
+                </p>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="refreshCacheList()" title="刷新列表"
+                    class="p-2 t-text-muted hover:text-blue-500 transition-colors">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <button onclick="toggleCacheDrawer()" title="关闭"
+                    class="p-2 t-text-muted hover:text-blue-500 transition-colors">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 批量管理工具栏 (Batch Toolbar Style) -->
+        <div id="cache-batch-toolbar"
+            class="hidden px-6 py-3 t-bg-panel border-b t-border-main flex items-center justify-between transition-all duration-300">
+            <div class="flex items-center gap-3">
+                <span class="text-xs font-bold t-text-main">已选择: <span id="cache-selected-count"
+                        class="text-blue-500">0</span></span>
+                <div class="flex gap-1.5">
+                    <button onclick="selectAllCache()"
+                        class="px-2 py-1 text-[10px] font-bold rounded t-bg-main t-text-reverse hover:opacity-80 transition-all">全选</button>
+                    <button onclick="deselectAllCache()"
+                        class="px-2 py-1 text-[10px] font-bold rounded t-bg-panel-light t-text-main border t-border-main hover:t-bg-main hover:t-text-reverse transition-all">清空</button>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="batchDeleteCache()"
+                    class="px-3 py-1.5 text-xs font-bold bg-red-500 text-white rounded-lg shadow-sm hover:bg-red-600 transition-all flex items-center gap-1.5">
+                    <i class="fas fa-trash-alt text-[10px]"></i>
+                    批量删除
+                </button>
+            </div>
+        </div>
+
+        <!-- List Content -->
+        <div id="cache-list-container" class="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
+            <!-- Items injected here by JS -->
+            <div class="flex flex-col items-center justify-center h-full text-center p-10 space-y-4">
+                <i class="fas fa-cloud-download-alt text-4xl t-text-muted opacity-20"></i>
+                <p class="text-sm t-text-muted font-medium">正在读取缓存列表...</p>
+            </div>
+        </div>
+
+        <!-- Footer Stats -->
+        <div id="cache-footer-stats"
+            class="p-4 border-t t-border-main t-bg-panel-light flex justify-between items-center">
+            <div class="flex flex-col">
+                <span id="cache-total-size" class="text-sm font-black t-text-main">0.00 MB</span>
+                <span class="text-[9px] t-text-muted font-bold uppercase tracking-tighter">TOTAL DISK USAGE</span>
+            </div>
+            <button onclick="toggleCacheBatchMode()" id="cache-manage-btn"
+                class="px-4 py-2 bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white text-xs font-black rounded-xl transition-all border border-blue-500/20">
+                批量管理
+            </button>
+            <button onclick="exitCacheBatchMode()" id="cache-exit-batch-btn"
+                class="hidden px-4 py-2 bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white text-xs font-black rounded-xl transition-all border border-red-500/20">
+                退出选择
+            </button>
         </div>
     </div>
 
@@ -3502,6 +3841,7 @@
     <script src="/music/js/batch_pagination.js"></script>
     <script src="/music/js/single_song_ops.js"></script>
     <script src="/music/js/theme_manager.js"></script>
+    <script src="/music/js/list_search.js"></script>
     <script src="/music/js/songlist_manager.js"></script>
     <script src="/music/js/wave.js"></script>
     <script src="/music/js/visualizer.js"></script>

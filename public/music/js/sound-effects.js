@@ -250,8 +250,12 @@ window.soundEffects = (function () {
     }
 
     function applySettings() {
-        // EQ
-        eqFilters.forEach((f, i) => f.gain.value = settings.eq[i]);
+        // EQ - check if initialized
+        if (eqFilters && eqFilters.length > 0) {
+            eqFilters.forEach((f, i) => {
+                if (f && f.gain) f.gain.value = settings.eq[i];
+            });
+        }
         // Reverb
         updateReverb();
         // Panner
@@ -261,7 +265,7 @@ window.soundEffects = (function () {
     }
 
     function updateReverb() {
-        if (!convolverNode) return;
+        if (!convolverNode || !audioContext) return;
         const rev = reverbOptions.find(r => r.id === settings.reverb.id);
 
         if (!rev || rev.id === 'none') {
@@ -274,6 +278,7 @@ window.soundEffects = (function () {
                 .then(r => r.arrayBuffer())
                 .then(data => audioContext.decodeAudioData(data))
                 .then(buffer => {
+                    if (!convolverNode) return;
                     convolverNode.buffer = buffer;
                     if (dryGainNode) dryGainNode.gain.value = settings.reverb.mainGain;
                     if (wetGainNode) wetGainNode.gain.value = settings.reverb.sendGain;
@@ -282,6 +287,7 @@ window.soundEffects = (function () {
     }
 
     function updatePanner() {
+        if (!pannerNode) return;
         const p = settings.panner;
 
         if (pannerInfo.interval) {
@@ -293,6 +299,7 @@ window.soundEffects = (function () {
         if (p.enable) {
             console.log('[SoundEffects] Starting Panner (Desktop Logic)');
             pannerInfo.interval = setInterval(() => {
+                if (!pannerNode) return;
                 pannerInfo.rad += 1;
                 if (pannerInfo.rad > 360) pannerInfo.rad -= 360;
 
