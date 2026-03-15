@@ -1517,6 +1517,28 @@ window.addEventListener('resize', () => {
 let imageObserver;
 
 function lazyLoadImages() {
+    // 禁用 lazyload 逻辑，直接遍历所有图片并快速加载
+    const imagesToLoad = document.querySelectorAll('img.lazy-image');
+    imagesToLoad.forEach(img => {
+        const src = img.getAttribute('data-src');
+        if (src) {
+            if (img.src.includes('logo.svg')) {
+                img.classList.add('is-placeholder');
+            }
+            img.src = src;
+            img.onload = () => {
+                img.classList.remove('is-placeholder', 'opacity-0');
+                img.removeAttribute('data-src');
+            };
+            img.onerror = () => {
+                img.src = '/music/assets/logo.svg';
+                img.classList.add('is-placeholder');
+            };
+        }
+    });
+
+    return; // 短路返回，保留并禁用以下原有的交集观察者懒加载逻辑
+
     // If IntersectionObserver is supported
     if ('IntersectionObserver' in window) {
         if (imageObserver) {
