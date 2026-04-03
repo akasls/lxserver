@@ -209,8 +209,7 @@ window.soundEffects = (function () {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'x-user-name': user,
-                    'x-user-password': pass
+                    ...getUserAuthHeaders()
                 },
                 body: JSON.stringify(payload)
             });
@@ -229,10 +228,7 @@ window.soundEffects = (function () {
 
         try {
             const res = await fetch('/api/user/sound-effects', {
-                headers: {
-                    'x-user-name': user,
-                    'x-user-password': pass
-                }
+                headers: getUserAuthHeaders()
             });
             if (res.ok) {
                 const data = await res.json();
