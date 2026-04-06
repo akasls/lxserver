@@ -416,12 +416,31 @@
                         <div class="form-group">
                             <label class="checkbox-label">
                                 <input type="checkbox" name="proxy.enabled" />
-                                <span>启用代理</span>
+                                <span>启用反向代理支持 (Forwarded Headers)</span>
                             </label>
                         </div>
                         <div class="form-group">
-                            <label>代理请求头</label>
+                            <label>反代请求头 (如 x-real-ip)</label>
                             <input type="text" name="proxy.header" class="form-input" />
+                        </div>
+
+                        <hr style="opacity: 0.1; margin: 1.5rem 0;" />
+
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="proxy.all.enabled" />
+                                <span>启用音乐资源 API 代理 (服务端)</span>
+                            </label>
+                            <small style="color: var(--text-secondary); display: block; margin-top: 0.5rem; margin-left: 1.5rem;">
+                                开启后，服务端获取歌词/热搜/歌单等请求将通过此代理发出。
+                            </small>
+                        </div>
+                        <div class="form-group">
+                            <label>代理地址 (支持 http:// 或 socks5://)</label>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" name="proxy.all.address" class="form-input" style="flex: 1;" placeholder="http://127.0.0.1:7890" />
+                                <button type="button" id="test-proxy-btn" class="btn" style="white-space: nowrap;">测试代理</button>
+                            </div>
                         </div>
 
                         <h3>前端配置</h3>

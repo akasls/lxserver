@@ -198,6 +198,12 @@ if (envParams.DISABLE_TELEMETRY) {
 if (envParams.ENABLE_PUBLIC_USER_RESTRICTION) {
   global.lx.config['user.enablePublicRestriction'] = envParams.ENABLE_PUBLIC_USER_RESTRICTION === 'true'
 }
+if (envParams.PROXY_ALL_ENABLED) {
+  global.lx.config['proxy.all.enabled'] = envParams.PROXY_ALL_ENABLED === 'true'
+}
+if (envParams.PROXY_ALL_ADDRESS) {
+  global.lx.config['proxy.all.address'] = envParams.PROXY_ALL_ADDRESS
+}
 
 if (envUsers.length) {
   const users: LX.Config['users'] = []

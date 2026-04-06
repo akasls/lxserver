@@ -85,5 +85,13 @@ module.exports = {
   // 是否禁用数据收集
   // 环境变量: DISABLE_TELEMETRY (true/false)
   // 说明：仅收集版本号、运行环境（Docker/Node）、OS类型等非敏感信息用于项目改进。绝对匿名，不收集IP。
-  "disableTelemetry": false
+  "disableTelemetry": false,
+
+  // 是否启用针对所有外发的请求代理 (目前主要用于离线音源的播放链接获取)
+  // 环境变量: PROXY_ALL_ENABLED (true/false)
+  "proxy.all.enabled": false,
+
+  // 代理地址 (支持 http:// 或 socks5://)
+  // 环境变量: PROXY_ALL_ADDRESS (例如: http://127.0.0.1:7890)
+  "proxy.all.address": ""
 }

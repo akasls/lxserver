@@ -1,12 +1,14 @@
 import { VM } from 'vm2'
 import * as fs from 'fs'
 import * as path from 'path'
-// @ts-ignore
+
 import needle from 'needle'
 import * as crypto from 'crypto'
 import * as zlib from 'zlib'
 import { promisify } from 'util'
+import { SocksProxyAgent } from 'socks-proxy-agent'
 
+import * as tunnel from 'tunnel'
 const inflate = promisify(zlib.inflate)
 const deflate = promisify(zlib.deflate)
 
@@ -180,7 +182,8 @@ function createLxRequest(isUnsafe: boolean = false) {
         })
 
         return () => {
-            if (!request.request.aborted) request.request.abort()
+            const reqObj = (request as any).request
+            if (reqObj && !reqObj.aborted) reqObj.abort()
         }
     }
 }
