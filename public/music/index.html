@@ -671,6 +671,57 @@
         :root[data-appearance="dark"] .row-selected {
             background-color: color-mix(in srgb, var(--c-500) 18%, transparent) !important;
         }
+
+        /* 响应式侧边栏优化：针对垂直高度不足的情况 */
+        @media (max-height: 845px) {
+
+            /* 压缩导航栏间距 */
+            #main-sidebar nav ul li a,
+            #main-sidebar nav ul li div[onclick] {
+                padding-top: 0.4rem !important;
+                padding-bottom: 0.4rem !important;
+            }
+
+            /* 迷你播放器改为横向布局 */
+            #sidebar-song-info:not(.hidden) {
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: center !important;
+                gap: 0.75rem !important;
+                padding: 0.75rem 1rem !important;
+                text-align: left !important;
+            }
+
+            #sidebar-cover {
+                width: 3.25rem !important;
+                height: 3.25rem !important;
+                margin-bottom: 0 !important;
+                border-radius: 0.5rem !important;
+            }
+
+            #sidebar-song-info>div.text-center {
+                text-align: left !important;
+                align-items: flex-start !important;
+                flex: 1;
+                min-width: 0;
+            }
+
+            #sidebar-song-name {
+                font-size: 0.8rem !important;
+                line-height: 1.25;
+            }
+
+            #sidebar-singer {
+                font-size: 0.7rem !important;
+                line-height: 1.2;
+            }
+
+            /* 压缩底部版权信息 */
+            .sidebar-copyright-text {
+                padding-top: 0.5rem !important;
+                padding-bottom: 0.5rem !important;
+            }
+        }
     </style>
 </head>
 
@@ -686,7 +737,7 @@
 
         <!-- Sidebar -->
         <aside id="main-sidebar"
-            class="w-64 t-bg-panel shadow-lg flex flex-col z-[60] fixed inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 md:z-30 h-full pb-44 md:pb-32 transition-all duration-300">
+            class="w-64 t-bg-panel shadow-lg flex flex-col z-[60] fixed inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 md:z-30 h-full pb-28 transition-all duration-300">
             <div class="h-16 flex items-center justify-center border-b t-border-main relative">
                 <svg viewBox="0 0 447.942 447.943" class="w-8 h-8 mr-2 rounded-lg shadow-sm"
                     xmlns="http://www.w3.org/2000/svg">
@@ -768,7 +819,7 @@
             </nav>
 
             <!-- Mini Player Info (Optional, cover art here) -->
-            <div class="hidden md:block [@media(max-height:650px)]:!hidden sidebar-song-info-wrapper mt-auto">
+            <div class="hidden md:block [@media(max-height:535px)]:!hidden sidebar-song-info-wrapper mt-auto">
                 <div id="sidebar-song-info" class="p-4 border-t t-border-main hidden">
                     <img id="sidebar-cover" src="/music/assets/logo.svg" loading="lazy" fetchpriority="low"
                         onerror="this.src='/music/assets/logo.svg'; this.classList.add('is-placeholder');" alt="Cover"
@@ -782,7 +833,8 @@
                 </div>
             </div>
 
-            <div class="hidden md:block px-6 py-4 text-[10px] t-text-muted text-center border-t t-border-main">
+            <div
+                class="hidden md:block px-6 py-4 text-[10px] t-text-muted text-center border-t t-border-main sidebar-copyright-text">
                 Copyright © 2026 <a href="https://github.com/xcq0607" target="_blank"
                     class="hover:text-emerald-500 transition-colors">xcq0607</a>.<br>
                 Licensed under Apache-2.0.
