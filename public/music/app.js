@@ -72,6 +72,7 @@ const DEFAULT_SETTINGS = {
     enableAutoProxy: true, // 自动代理
     enableCustomProxy: false, // 是否启用自定义代理
     customProxyUrl: '', // 自定义代理URL模板，使用 {url} 作为原始URL占位符
+    enableOnlyDownloadMode: false, // 仅下载模式
     downloadConcurrency: 3, // 缓存并发量 (1-6)
     hotSearchLimit: 20, // 热搜显示数量
     lyricFontSize: 1.25, // 歌词字体大小 (rem)
@@ -3924,7 +3925,7 @@ document.addEventListener('keyup', (e) => {
 });
 
 async function updateSetting(key, value) {
-    const restrictedKeys = ['enableServerCache', 'enableServerLyricCache', 'serverCacheLocation'];
+    const restrictedKeys = ['enableServerCache', 'enableServerLyricCache', 'serverCacheLocation', 'enableOnlyDownloadMode'];
     const isPublic = !currentListData?.username || currentListData?.username === 'default';
     const enablePublicRestriction = window.lx_config?.['user.enablePublicRestriction'];
     const isAdmin = !!localStorage.getItem('lx_admin_password');
@@ -4114,6 +4115,7 @@ const SETTINGS_UI_MAP = {
     enableServerCache: { id: 'setting-enable-server-cache', type: 'checkbox' },
     enableServerLyricCache: { id: 'setting-enable-server-lyric-cache', type: 'checkbox' },
     preferServerCache: { id: 'setting-prefer-server-cache', type: 'checkbox' },
+    enableOnlyDownloadMode: { id: 'setting-only-download-mode', type: 'checkbox' },
     serverCacheLocation: { id: 'setting-server-cache-location', type: 'value' },
     enableProxyPlayback: { id: 'toggle-proxy-playback', type: 'checkbox' },
     enableProxyDownload: { id: 'toggle-proxy-download', type: 'checkbox' },
@@ -8744,7 +8746,8 @@ async function handleDownloadClick(event) {
 
     const song = currentPlayingSong;
     const options = ['浏览器下载', '缓存到服务器'];
-    const selected = await showOptions('下载与缓存', `选择对 [${song.name}] 的操作：`, options);
+    const modeText = window.settings?.['enableOnlyDownloadMode'] ? '仅下载模式' : '缓存模式';
+    const selected = await showOptions('下载与缓存', `[${modeText}] 选择对 [${song.name}] 的操作：`, options);
 
     if (selected === '浏览器下载') {
         if (typeof downloadSong === 'function') {

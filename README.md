@@ -8,7 +8,7 @@
   <h1>LX Sync Server</h1> -->
   <p>
     <img src="https://img.shields.io/badge/build-passing-brightgreen?style=flat-square" alt="Build Status">
-    <img src="https://img.shields.io/badge/version-v1.8.3-blue?style=flat-square" alt="Version">
+    <img src="https://img.shields.io/badge/version-v1.8.4-blue?style=flat-square" alt="Version">
     <img src="https://img.shields.io/badge/node-%3E%3D16-green?style=flat-square" alt="Node Version">
     <img src="https://img.shields.io/github/license/XCQ0607/lxserver?style=flat-square" alt="License">
     <br>
@@ -223,6 +223,8 @@ npm start
 | `BIND_IP`                        | `bindIP`                       | 绑定 IP                                                         | `0.0.0.0`        |
 | `ADMIN_PATH`                     | `admin.path`                   | 后台管理界面访问路径 (默认为空，即根路径 `/`)                    | (空)             |
 | `PLAYER_PATH`                    | `player.path`                  | Web 播放器访问路径 (默认为 `/music`)                            | `/music`         |
+| `SUBSONIC_ENABLE`               | `subsonic.enable`              | 是否启用 Subsonic 协议支持 (服务默认开启)                       | `true`           |
+| `SUBSONIC_PATH`                 | `subsonic.path`                | Subsonic 访问路径 (默认为 `/rest`)                               | `/rest`          |
 | `FRONTEND_PASSWORD`              | `frontend.password`            | Web 管理界面访问密码                                            | `123456`         |
 | `SERVER_NAME`                    | `serverName`                   | 同步服务名称                                                    | `My Sync Server` |
 | `MAX_SNAPSHOT_NUM`               | `maxSnapshotNum`               | 保留的最大快照数量                                              | `10`             |

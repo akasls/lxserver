@@ -5,7 +5,7 @@
 <div align="center">
   <p>
     <img src="https://img.shields.io/badge/build-passing-brightgreen?style=flat-square" alt="Build Status">
-    <img src="https://img.shields.io/badge/version-v1.8.3-blue?style=flat-square" alt="Version">
+    <img src="https://img.shields.io/badge/version-v1.8.4-blue?style=flat-square" alt="Version">
     <img src="https://img.shields.io/badge/node-%3E%3D16-green?style=flat-square" alt="Node Version">
     <img src="https://img.shields.io/github/license/XCQ0607/lxserver?style=flat-square" alt="License">
     <br>
@@ -212,6 +212,8 @@ Edit `config.js` directly. Environment variables take precedence:
 | `BIND_IP` | `bindIP` | Binding IP | `0.0.0.0` |
 | `ADMIN_PATH` | `admin.path` | Backend management interface path | (empty) |
 | `PLAYER_PATH` | `player.path` | Web player access path | `/music` |
+| `SUBSONIC_ENABLE` | `subsonic.enable` | Enable Subsonic protocol support | `true` |
+| `SUBSONIC_PATH` | `subsonic.path` | Subsonic access path | `/rest` |
 | `FRONTEND_PASSWORD` | `frontend.password` | Web dashboard password | `123456` |
 | `SERVER_NAME` | `serverName` | Sync service name | `My Sync Server` |
 | `MAX_SNAPSHOT_NUM` | `maxSnapshotNum` | Max snapshots to keep | `10` |

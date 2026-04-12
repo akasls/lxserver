@@ -79,6 +79,13 @@ LX Music Sync Server 构建了统一的基础模型骨架（位于 `src/defaultC
 | :--- | :--- | :--- | :--- |
 | `LIST_ADD_MUSIC_LOCATION_TYPE` | `top` | String | **新歌添加位置**。可选值为 `top`（添加到列表顶部）或 `bottom`（添加到列表底部）。 |
 
+### 七、 Subsonic 协议配置
+
+| 环境变量映射键 (ENV) | 系统默认值 | 数据类型 | 作用域与适用场景 |
+| :--- | :--- | :--- | :--- |
+| `SUBSONIC_ENABLE` | `true` | Boolean | **启用 Subsonic 协议**。开启后允许使用兼容 Subsonic 协议的客户端连接。 |
+| `SUBSONIC_PATH` | `'/rest'` | String | **Subsonic 访问路径**。默认为 `/rest`。 |
+
 ### 六、 (高阶特性) CLI 环境下静默预置账户
 
 借助操作系统层面的预声明策略，用户可以在跳过图形界面配置的情况下，在服务端初始化启动序列内向数据持久层静态写入账户：

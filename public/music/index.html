@@ -2097,6 +2097,30 @@
                                         </label>
                                     </div>
 
+                                    <!-- Only Download Mode -->
+                                    <div class="flex items-center justify-between pb-3 border-b t-border-main">
+                                        <div>
+                                            <div class="text-sm font-bold t-text-main flex items-center">
+                                                仅下载模式 (Only Download Mode)
+                                                <span class="setting-tooltip-trigger ml-1">
+                                                    <i class="fas fa-question-circle"></i>
+                                                    <span class="setting-tooltip-content">未开启时下载到 /server/cache/用户名 (或
+                                                        /server/data/cache/)，命名为
+                                                        {Name}_-_{Singer}_-_{Source}_-_{ID}_-_{Quality}；<br>开启后下载到
+                                                        /server/music/用户名 (或 /server/data/music/)，命名为 {Name} - {Singer}
+                                                        - {Quality}。</span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" id="setting-only-download-mode" class="sr-only peer"
+                                                onchange="updateSetting('enableOnlyDownloadMode', this.checked)">
+                                            <div
+                                                class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500 transition-all">
+                                            </div>
+                                        </label>
+                                    </div>
+
                                     <!-- Cache Location Setting -->
                                     <div class="pb-3 border-b t-border-main">
                                         <div class="flex items-center justify-between mb-2">

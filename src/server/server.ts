@@ -648,7 +648,6 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
     const pathname = urlObj.pathname
 
     // 读取路径配置（每次请求都重新读取，保存后立刻生效）
-    // 读取路径配置（每次请求都重新读取，保存后立刻生效）
     const normalizePath = (p: string) => (p || '').replace(/\/+$/, '')
     const playerPath = global.lx.config['player.path'] || '/music'
     const adminPath = global.lx.config['admin.path'] || ''
@@ -708,47 +707,7 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
       }
     }
 
-    // [管理界面]
-    const effectiveAdminPath = adminPath || '/'
-    const isAdminPath = (pathname === effectiveAdminPath || pathname === effectiveAdminPath + '/' || pathname === effectiveAdminPath + '/index.html')
-
-    if (isAdminPath) {
-      const rootHtmlPath = path.join(global.lx.staticPath, 'index.html')
-      if (fs.existsSync(rootHtmlPath)) {
-        serveStatic(req, res, rootHtmlPath)
-        return
-      }
-    }
-
-    // [全局静态文件兜底] 
-    // 注意：如果设置了 adminPath，则不允许通过 / 直接访问后台资源文件，除非它是公共资源
-    if (!pathname.startsWith('/api/')) {
-      const generalFilePath = path.join(global.lx.staticPath, pathname)
-      // 禁止绕过 adminPath 直接访问后台 index.html
-      if (pathname === '/' || pathname === '/index.html') {
-        if (adminPath !== '') {
-          res.writeHead(404)
-          res.end('Not Found')
-          return
-        }
-      }
-
-      if (fs.existsSync(generalFilePath) && fs.statSync(generalFilePath).isFile()) {
-        serveStatic(req, res, generalFilePath)
-        return
-      }
-    }
-
-    // [Subsonic API]
-    const subsonicEnable = global.lx.config['subsonic.enable']
-    const subsonicPath = normalizePath(global.lx.config['subsonic.path'] || '/rest')
-    if (subsonicEnable && (pathname.startsWith(subsonicPath + '/') || pathname === subsonicPath)) {
-      const { subsonicHandler } = require('./subsonic')
-      return subsonicHandler.handleRequest(req, res, urlObj)
-    }
-
-    // 动态 config.js - 从静态文件读取版本号, 合并服务端配置注入 window.CONFIG
-    // 配置优先级: 环境变量 > 根目录 config.js > src/defaultConfig.ts
+    // [动态配置注入] 优先拦截 /js/config.js 请求，确保后端配置能注入到前端 window.CONFIG
     if (pathname === '/js/config.js') {
       // 从静态文件读取版本号和构建哈希
       const staticConfigPath = path.join(global.lx.staticPath, 'js', 'config.js')
@@ -762,7 +721,7 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
         if (matchHash) buildHash = matchHash[1]
       } catch { }
 
-      // 构造前端配置 (不含敏感字段如密码)
+      // 构造前端配置 暴露给前端
       const frontendConfig = {
         version,
         buildHash,
@@ -789,6 +748,45 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
       res.end(configJs)
       return
     }
+
+    // [管理界面]
+    const effectiveAdminPath = adminPath || '/'
+    const isAdminPath = (pathname === effectiveAdminPath || pathname === effectiveAdminPath + '/' || pathname === effectiveAdminPath + '/index.html')
+
+    if (isAdminPath) {
+      const rootHtmlPath = path.join(global.lx.staticPath, 'index.html')
+      if (fs.existsSync(rootHtmlPath)) {
+        serveStatic(req, res, rootHtmlPath)
+        return
+      }
+    }
+
+    // 注意：如果设置了 adminPath，则不允许通过 / 直接访问后台资源文件，除非它是公共资源
+    if (!pathname.startsWith('/api/')) {
+      const generalFilePath = path.join(global.lx.staticPath, pathname)
+      // 禁止绕过 adminPath 直接访问后台 index.html
+      if (pathname === '/' || pathname === '/index.html') {
+        if (adminPath !== '') {
+          res.writeHead(404)
+          res.end('Not Found')
+          return
+        }
+      }
+
+      if (fs.existsSync(generalFilePath) && fs.statSync(generalFilePath).isFile()) {
+        serveStatic(req, res, generalFilePath)
+        return
+      }
+    }
+
+    // [Subsonic API]
+    const subsonicEnable = global.lx.config['subsonic.enable']
+    const subsonicPath = normalizePath(global.lx.config['subsonic.path'] || '/rest')
+    if (subsonicEnable && (pathname.startsWith(subsonicPath + '/') || pathname === subsonicPath)) {
+      const { subsonicHandler } = require('./subsonic')
+      return subsonicHandler.handleRequest(req, res, urlObj)
+    }
+
 
     if (pathname.startsWith('/api/')) {
 
@@ -2055,7 +2053,7 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
       if (pathname === '/api/music/cache/download' && req.method === 'POST') {
         void readBody(req).then(body => {
           try {
-            const { songInfo, url, quality } = JSON.parse(body)
+            const { songInfo, url, quality, enableOnlyDownloadMode } = JSON.parse(body)
             if (!songInfo || !url) {
               res.writeHead(400)
               res.end('Missing params')
@@ -2088,9 +2086,9 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
             }
             userTasks.push({ songKey, controller })
 
-            void fileCache.downloadAndCache(songInfo, url, quality, username, controller.signal)
+            void fileCache.downloadAndCache(songInfo, url, quality, username, controller.signal, !!enableOnlyDownloadMode)
               .then(() => console.log(`[Cache] Downloaded ${songInfo.name} for ${username || '_open'}`))
-              .catch(err => {
+              .catch((err: any) => {
                 if (err.message === 'Aborted') {
                   console.log(`[Cache] Task aborted for ${songInfo.name}`)
                 } else {

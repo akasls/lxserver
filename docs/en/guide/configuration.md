@@ -79,6 +79,13 @@ The underlying periodic polling asynchronous daemon of the service will only be 
 | :--- | :--- | :--- | :--- |
 | `LIST_ADD_MUSIC_LOCATION_TYPE` | `top` | String | **New song location**. `top` (add to the top) or `bottom` (add to the bottom). |
 
+### VII. Subsonic Protocol Configuration
+
+| Environment Variable Mapping Key (ENV) | System Default Value | Data Type | Scope and Applicable Scenarios |
+| :--- | :--- | :--- | :--- |
+| `SUBSONIC_ENABLE` | `true` | Boolean | **Enable Subsonic protocol**. Allows connections from Subsonic-compatible clients. |
+| `SUBSONIC_PATH` | `'/rest'` | String | **Subsonic access path**. Default is `/rest`. |
+
 ### VI. (Advanced Feature) Silent Preset Accounts in CLI Environment
 
 With the pre-declaration strategy at the operating system level, users can statically write accounts into the data persistence layer within the server initialization startup sequence without skipping graphical interface configuration:

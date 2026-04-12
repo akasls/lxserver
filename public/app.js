@@ -292,7 +292,7 @@ class App {
                 window.location.href = '/filemanager.html';
                 return;
             case 'music':
-                window.location.href = '/music';
+                window.location.href = (window.CONFIG && window.CONFIG['player.path']) || '/music';
                 return;
         }
     }
@@ -358,6 +358,11 @@ class App {
                 sidebarVersionEl.textContent = window.CONFIG.version;
                 sidebarVersionEl.classList.remove('hidden');
             }
+        }
+        // 初始化播放器链接
+        const navPlayerLink = document.getElementById('nav-player-link');
+        if (navPlayerLink && window.CONFIG && window.CONFIG['player.path']) {
+            navPlayerLink.href = window.CONFIG['player.path'];
         }
     }
 
