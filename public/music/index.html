@@ -6,6 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LX Music Web</title>
     <!-- Config MUST be loaded before PostHog -->
+    <script>
+        (function () {
+            var pathname = window.location.pathname;
+            var baseHref = pathname.endsWith('/') ? pathname : pathname + '/';
+            var baseTag = document.createElement('base');
+            baseTag.href = baseHref;
+            document.head.prepend(baseTag);
+            console.log('[PWA] Base href set to:', baseHref);
+        })();
+    </script>
     <script src="/js/config.js"></script>
     <!-- PostHog Analytics -->
     <script>
@@ -14,15 +24,15 @@
             posthog.init('phc_vvaqX7sm3RqmiqRbMCjETTc67XKjgqeMgmYHvsZr30f', { api_host: 'https://us.i.posthog.com' })
         }
     </script>
-    <link rel="icon" href="/music/assets/logo.svg" type="image/svg+xml">
-    <link rel="manifest" href="/music/manifest.json">
-    <link rel="stylesheet" href="/music/css/theme_variables.css">
-    <script src="/music/assets/tailwindcss.js"></script>
-    <script src="/music/js/tailwind_setup.js"></script>
-    <link rel="stylesheet" href="/music/assets/fontawesome/css/all.min.css">
-    <script src="/music/js/crypto-js.min.js"></script>
-    <script src="/music/js/marked.min.js"></script>
-    <script src="/music/js/Sortable.min.js"></script>
+    <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="css/theme_variables.css">
+    <script src="assets/tailwindcss.js"></script>
+    <script src="js/tailwind_setup.js"></script>
+    <link rel="stylesheet" href="assets/fontawesome/css/all.min.css">
+    <script src="js/crypto-js.min.js"></script>
+    <script src="js/marked.min.js"></script>
+    <script src="js/Sortable.min.js"></script>
     <script src="/js/notification-engine.js"></script>
     <style>
         /* Custom scrollbar */
@@ -4433,26 +4443,26 @@
     <!-- Audio Element -->
     <audio id="audio-player" crossorigin="anonymous"></audio>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
-    <script src="/music/js/NoSleep.min.js"></script>
-    <script src="/music/js/log_viewer.js"></script>
-    <script src="/music/js/lyric-utils.js"></script>
-    <script src="/music/js/lyric-parser.js"></script>
-    <script src="/music/js/quality.js"></script>
-    <script src="/music/js/user_sync.js"></script>
-    <script src="/music/js/batch_pagination.js"></script>
-    <script src="/music/js/single_song_ops.js"></script>
-    <script src="/music/js/theme_manager.js"></script>
-    <script src="/music/js/list_search.js"></script>
-    <script src="/music/js/songlist_manager.js"></script>
-    <script src="/music/js/leaderboard_manager.js"></script>
-    <script src="/music/js/wave.js"></script>
-    <script src="/music/js/visualizer.js"></script>
-    <script src="/music/js/pwa.js"></script>
-    <script src="/music/js/lyric-card.js"></script>
-    <script src="/music/js/ios-background-audio.js"></script>
-    <script src="/music/js/sound-effects.js"></script>
-    <script src="/music/js/download_manager.js"></script>
-    <script src="/music/app.js"></script>
+    <script src="js/NoSleep.min.js"></script>
+    <script src="js/log_viewer.js"></script>
+    <script src="js/lyric-utils.js"></script>
+    <script src="js/lyric-parser.js"></script>
+    <script src="js/quality.js"></script>
+    <script src="js/user_sync.js"></script>
+    <script src="js/batch_pagination.js"></script>
+    <script src="js/single_song_ops.js"></script>
+    <script src="js/theme_manager.js"></script>
+    <script src="js/list_search.js"></script>
+    <script src="js/songlist_manager.js"></script>
+    <script src="js/leaderboard_manager.js"></script>
+    <script src="js/wave.js"></script>
+    <script src="js/visualizer.js"></script>
+    <script src="js/pwa.js"></script>
+    <script src="js/lyric-card.js"></script>
+    <script src="js/ios-background-audio.js"></script>
+    <script src="js/sound-effects.js"></script>
+    <script src="js/download_manager.js"></script>
+    <script src="app.js"></script>
     <script>
         // Setting Tooltips Mobile Support
         document.addEventListener('click', function (e) {

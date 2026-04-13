@@ -655,7 +655,29 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
     // 映射播放器逻辑 (无论是自定义路径还是前端硬编码的 /music/)
     const isPlayerRequest = pathname.startsWith(playerPath + '/') || pathname === playerPath
 
-    // 修复：只兼容旧版硬编码引用的静态资源，不再兼容打开 /music 页面本身，这样/music就无法作为网页直接打开了
+    // [新增] 映射管理后台逻辑
+    const isAdminRequest = adminPath && (pathname.startsWith(adminPath + '/') || pathname === adminPath)
+
+    if (isAdminRequest) {
+      if (pathname === adminPath) {
+        res.writeHead(301, { 'Location': pathname + '/' })
+        res.end()
+        return
+      }
+      const subPath = pathname.slice(adminPath.length)
+      let targetPath = ''
+      if (subPath === '/' || subPath === '') {
+        targetPath = 'index.html'
+      } else {
+        targetPath = subPath.startsWith('/') ? subPath.slice(1) : subPath
+      }
+      const filePath = path.join(global.lx.staticPath, targetPath)
+      if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+        serveStatic(req, res, filePath)
+        return
+      }
+    }
+
     const isLegacyPlayerAsset = playerPath !== '/music' && (
       pathname.startsWith('/music/assets/') ||
       pathname.startsWith('/music/css/') ||
@@ -691,13 +713,20 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
       // 规范化物理路径
       let targetPath = pathname
       // 将请求路径中的前缀映射到真实的 /music 物理目录
+      if (pathname === activePrefix) {
+        res.writeHead(301, { 'Location': pathname + '/' })
+        res.end()
+        return
+      }
+
       const subPath = pathname.slice(activePrefix.length)
-      if (subPath === '' || subPath === '/') {
+      if (subPath === '/' || subPath === '') {
         targetPath = '/music/index.html'
       } else if (isLoginPage) {
         targetPath = '/music/login.html'
       } else {
-        targetPath = '/music' + subPath
+        // 使用 posix 风格 join 确保路径格式统一为 /music/xxxx
+        targetPath = path.posix.join('/music', subPath)
       }
 
       const filePath = path.join(global.lx.staticPath, targetPath)

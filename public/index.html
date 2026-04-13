@@ -6,6 +6,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LX Music Sync Server - 管理控制台</title>
     <!-- Config MUST be loaded before PostHog -->
+    <script>
+        (function () {
+            var pathname = window.location.pathname;
+            var baseHref = pathname.endsWith('/') ? pathname : pathname + '/';
+            var baseTag = document.createElement('base');
+            baseTag.href = baseHref;
+            document.head.prepend(baseTag);
+            console.log('[Admin] Base href set to:', baseHref);
+        })();
+    </script>
     <script src="/js/config.js"></script>
     <!-- PostHog Analytics -->
     <script>
@@ -20,7 +30,8 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
+                // 使用相对路径，它会自动基于 <base> 路径解析
+                navigator.serviceWorker.register('sw.js')
                     .then(registration => {
                         console.log('ServiceWorker registration successful');
                     })
@@ -30,8 +41,8 @@
             });
         }
     </script>
-    <script src="/vendor/js/marked.min.js"></script>
-    <script src="/music/assets/tailwindcss.js"></script>
+    <script src="vendor/js/marked.min.js"></script>
+    <script src="music/assets/tailwindcss.js"></script>
     <script>
         tailwind.config = {
             corePlugins: {
@@ -39,10 +50,10 @@
             }
         }
     </script>
-    <link rel="stylesheet" href="/music/assets/fontawesome/css/all.min.css">
-    <script src="/js/ui-utils.js"></script>
-    <script src="/js/notification-engine.js"></script>
-    <link href="/vendor/fonts/inter.css" rel="stylesheet">
+    <link rel="stylesheet" href="music/assets/fontawesome/css/all.min.css">
+    <script src="js/ui-utils.js"></script>
+    <script src="js/notification-engine.js"></script>
+    <link href="vendor/fonts/inter.css" rel="stylesheet">
 </head>
 
 <body>

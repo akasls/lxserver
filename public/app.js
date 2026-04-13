@@ -295,8 +295,8 @@ class App {
                 this.loadAbout();
                 break;
             case 'files':
-                // 跳转到新的 elFinder 文件管理器
-                window.location.href = '/filemanager.html';
+                // 跳转到新的 elFinder 文件管理器 (相对路径)
+                window.location.href = 'filemanager.html';
                 return;
             case 'music':
                 window.location.href = (window.CONFIG && window.CONFIG['player.path']) || '/music';
