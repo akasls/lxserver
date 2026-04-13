@@ -6,12 +6,16 @@ import { apis } from '../api-source'
 import hotSearch from './hotSearch'
 import comment from './comment'
 import tipSearch from './tipSearch'
+import extendDetail from './extendDetail'
+import extendSearch from './extendSearch'
 
 const tx = {
   tipSearch,
   leaderboard,
   songList,
   musicSearch,
+  extendSearch,
+  extendDetail,
   hotSearch,
   comment,
 

@@ -983,31 +983,34 @@
                         <!-- Header -->
                         <div id="search-results-header"
                             class="grid grid-cols-12 gap-2 md:gap-4 p-3 md:p-4 border-b t-border-main t-bg-main text-gray-500 text-sm font-medium">
-                            <div class="col-span-2 sm:col-span-1 text-center flex items-center justify-center gap-2">
+                            <div
+                                class="col-span-3 sm:col-span-1 text-center flex items-center justify-center gap-1 sm:gap-2">
                                 <button id="search-back-btn" onclick="goBackToSearch()"
-                                    class="hidden px-2 py-1 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                    class="hidden px-1.5 py-1 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                                     title="返回列表">
-                                    <i class="fas fa-arrow-left"></i>
+                                    <i class="fas fa-arrow-left text-xs"></i>
                                 </button>
                                 <span>#</span>
                                 <div class="flex items-center gap-1">
                                     <button onclick="toggleBatchMode()"
-                                        class="text-xs text-emerald-600 hover:text-emerald-700" title="批量操作">
+                                        class="text-[10px] text-emerald-600 hover:text-emerald-700" title="批量操作">
                                         <i class="fas fa-tasks"></i>
                                     </button>
                                     <button onclick="window.ListSearch.toggleBar()"
-                                        class="text-xs text-emerald-600 hover:text-emerald-700" title="内搜索 (/)">
+                                        class="text-[10px] text-emerald-600 hover:text-emerald-700" title="内搜索 (/)">
                                         <i class="fas fa-search"></i>
                                     </button>
                                 </div>
                             </div>
-                            <div class="col-span-8 sm:col-span-7 md:col-span-6 lg:col-span-4" id="header-title">歌曲标题
+                            <div class="col-span-7 sm:col-span-7 md:col-span-6 lg:col-span-4" id="header-title">歌曲标题
                             </div>
                             <div
                                 class="hidden sm:block sm:col-span-3 md:col-span-3 lg:col-span-3 text-right md:text-left">
                                 歌手</div>
                             <div class="hidden lg:block lg:col-span-2" id="header-album">专辑</div>
-                            <div class="hidden md:block md:col-span-1 text-center">时长</div>
+                            <div class="hidden md:block md:col-span-1 text-right">时长</div>
+                            <div class="hidden sm:block sm:col-span-1 text-right">操作</div>
+                            <div class="col-span-2 sm:hidden text-right">操作</div>
                         </div>
 
                         <!-- Global Local Search Bar (Hidden by default) -->
@@ -1272,23 +1275,24 @@
                             <!-- List Section -->
                             <div class="flex-1 flex flex-col overflow-hidden">
                                 <div
-                                    class="grid grid-cols-12 gap-4 p-4 border-b t-border-main t-bg-main text-gray-500 text-xs font-bold uppercase tracking-wider">
+                                    class="grid grid-cols-12 gap-2 md:gap-4 p-4 border-b t-border-main t-bg-main text-gray-500 text-xs font-bold uppercase tracking-wider">
                                     <div
-                                        class="col-span-1 text-center font-mono flex items-center justify-center gap-1">
+                                        class="col-span-3 sm:col-span-1 text-center font-mono flex items-center justify-center gap-1 sm:gap-2">
                                         <span>#</span>
-                                        <div class="flex items-center gap-1 ml-0.5">
+                                        <div class="flex items-center gap-1">
                                             <button onclick="toggleBatchMode()"
-                                                class="text-xs text-emerald-600 hover:text-emerald-700" title="批量操作">
+                                                class="text-[10px] text-emerald-600 hover:text-emerald-700"
+                                                title="批量操作">
                                                 <i class="fas fa-tasks"></i>
                                             </button>
                                             <button onclick="window.ListSearch.toggleBar()"
-                                                class="text-xs text-emerald-600 hover:text-emerald-700 ml-0.5"
+                                                class="text-[10px] text-emerald-600 hover:text-emerald-700"
                                                 title="歌单内搜索">
                                                 <i class="fas fa-search"></i>
                                             </button>
                                         </div>
                                     </div>
-                                    <div class="col-span-9 md:col-span-5 lg:col-span-4">歌曲</div>
+                                    <div class="col-span-7 sm:col-span-9 md:col-span-5 lg:col-span-4">歌曲</div>
                                     <div class="hidden md:block md:col-span-3">歌手</div>
                                     <div class="hidden lg:block lg:col-span-2">专辑</div>
                                     <div class="hidden md:block md:col-span-2 lg:col-span-1 text-right">时长</div>

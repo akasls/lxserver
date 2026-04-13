@@ -89,11 +89,11 @@ module.exports = {
 
   // 是否启用针对所有外发的请求代理 (目前主要用于离线音源的播放链接获取)
   // 环境变量: PROXY_ALL_ENABLED (true/false)
-  "proxy.all.enabled": true,
+  "proxy.all.enabled": false,
 
   // 代理地址 (支持 http:// 或 socks5://)
   // 环境变量: PROXY_ALL_ADDRESS (例如: http://127.0.0.1:7890)
-  "proxy.all.address": "http://127.0.0.1:10808",
+  "proxy.all.address": "",
 
   // 后台管理界面访问路径（默认为空，即根路径 /）
   // 环境变量: ADMIN_PATH
