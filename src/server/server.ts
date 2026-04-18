@@ -184,7 +184,7 @@ setTimeout(() => {
  * 2. 其次验证持久化 API Token（管理面板产生，需开启账户 Token 功能）
  * 返回已验证的用户名，或 null 表示未认证。
  */
-const verifyUserAuth = (req: IncomingMessage): string | null => {
+export const verifyUserAuth = (req: IncomingMessage): string | null => {
   const token = req.headers['x-user-token'] as string
   if (token) {
     // 1. Session Token 验证
@@ -3726,9 +3726,37 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
       // 注：此处不再进行全局强制鉴权，鉴权逻辑已下放到 customSourceHandlers 中，
       // 以便根据请求体中的 username 字段判断是否需要校验管理员密码。
 
+      // [新增] 管理员身份验证接口
+      if (pathname === '/api/admin/verify' && req.method === 'POST') {
+        const auth = req.headers['x-frontend-auth']
+        if (auth === global.lx.config['frontend.password']) {
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ success: true }))
+        } else {
+          res.writeHead(401, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ success: false, error: '管理员密码验证失败' }))
+        }
+        return
+      }
+
       if (pathname === '/api/custom-source/validate' && req.method === 'POST') {
         return customSourceHandlers.handleValidate(req, res)
       }
+
+      // 所有自定义源修改接口通用鉴权 (如果是公开访问限制模式，则必须登录)
+      if (pathname.startsWith('/api/custom-source/') && req.method === 'POST' && pathname !== '/api/custom-source/validate') {
+        if (global.lx.config['user.enablePublicRestriction']) {
+          const auth = req.headers['x-frontend-auth']
+          const isAdmin = auth === global.lx.config['frontend.password']
+          const user = verifyUserAuth(req)
+          if (!isAdmin && !user) {
+            res.writeHead(403, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ success: false, error: '当前系统已开启访问限制，管理操作请登录后重试。' }))
+            return
+          }
+        }
+      }
+
       if (pathname === '/api/custom-source/import' && req.method === 'POST') {
         return customSourceHandlers.handleImport(req, res)
       }
@@ -3737,6 +3765,19 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
       }
       if (pathname === '/api/custom-source/list' && req.method === 'GET') {
         const username = urlObj.searchParams.get('username') || 'default'
+
+        // 鉴权逻辑：如果开启了页面公开访问限制
+        if (global.lx.config['user.enablePublicRestriction']) {
+          const auth = req.headers['x-frontend-auth']
+          const isAdmin = auth === global.lx.config['frontend.password']
+          const user = verifyUserAuth(req)
+          if (!isAdmin && !user) {
+            res.writeHead(403, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ success: false, error: '当前系统已开启公开访问限制，请登录后重试。' }))
+            return
+          }
+        }
+
         return customSourceHandlers.handleList(req, res, username)
       }
       if (pathname === '/api/custom-source/toggle' && req.method === 'POST') {

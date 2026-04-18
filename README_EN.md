@@ -118,6 +118,14 @@ To protect your privacy, the Web Player supports password protection.
 2. **Web Interface**:
    Log in to the management dashboard (default port 9527), go to **"System Config"**, check **"Enable Web Player Password"** and set your password.
 
+### Custom Source Permission Matrix (when `user.enablePublicRestriction` is enabled)
+
+| User Type | View List | Use/Toggle (Personal) | Upload/Import Public | Delete/Modify Public |
+| :--- | :--- | :--- | :--- | :--- |
+| **Admin** | ✅ Allowed | ✅ Allowed | ✅ Allowed | ✅ Allowed |
+| **Logged-in** | ✅ Allowed | ✅ Allowed | ❌ Denied | ❌ Denied |
+| **Guest** | ❌ Hidden | ❌ Denied | ❌ Denied | ❌ Denied |
+
 ## 📱 Mobile Adaptation
 The Web Player is deeply optimized for mobile devices, providing a native App-like experience in mobile browsers.
 

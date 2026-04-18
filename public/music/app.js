@@ -2995,9 +2995,26 @@ async function handleAdminAuth(message) {
         inputType: 'password'
     });
     if (pass) {
-        localStorage.setItem('lx_admin_password', pass);
-        updateAdminUI(); // 更新 UI 状态
-        return true;
+        try {
+            const response = await fetch('/api/admin/verify', {
+                method: 'POST',
+                headers: { 'x-frontend-auth': pass }
+            });
+
+            if (response.ok) {
+                localStorage.setItem('lx_admin_password', pass);
+                updateAdminUI(); // 更新 UI 状态
+                return true;
+            } else {
+                const result = await response.json();
+                showError(result.error || '密码验证失败');
+                return false;
+            }
+        } catch (err) {
+            console.error('Admin verification error:', err);
+            showError('服务器验证出错，请稍后重试');
+            return false;
+        }
     }
     return false;
 }
@@ -8755,7 +8772,20 @@ async function loadCustomSources() {
 async function fetchCustomSources() {
     try {
         const username = currentListData?.username || 'default';
-        const res = await fetch(`/api/custom-source/list?username=${username}`);
+        const headers = getUserAuthHeaders();
+        const adminPass = localStorage.getItem('lx_admin_password');
+        if (adminPass) headers['x-frontend-auth'] = adminPass;
+
+        const res = await fetch(`/api/custom-source/list?username=${username}`, {
+            headers: headers
+        });
+
+        if (res.status === 403) {
+            // 被后端拒绝访问，说明开启了公开限制且未登录成功
+            console.warn('[CustomSource] List access denied (403)');
+            return null; // 返回 null 表示由于权限原因被拦截
+        }
+
         if (!res.ok) throw new Error('Failed to fetch sources');
         return await res.json();
     } catch (err) {
@@ -8802,15 +8832,19 @@ function togglePublicSourcesSetting() {
 async function renderCustomSources() {
     let list = await fetchCustomSources();
 
-    // [新增] 公开受限用户检查逻辑
-    // 判断系统是否开启了“公开用户限制”，且当前访客是否为未登录状态 (userToken 为空)
-    const isPublicRestrictionActive = window.lx_config?.['user.enablePublicRestriction'] && !userToken;
+    // 判断当前状态：是否由于权限被拦截
+    // list === null 表示后端返回了 403
+    // 或者前端认为应该拦截：开启了公开限制 && 非登录用户 && 非管理员
+    const isAdmin = !!localStorage.getItem('lx_admin_password');
+    const isUser = !!userToken;
+    const isPublicRestrictionEnabled = !!window.lx_config?.['user.enablePublicRestriction'];
+    const isPublicRestrictionActive = isPublicRestrictionEnabled && !isUser && !isAdmin;
 
-    // Filter based on setting
-    if (settings.enablePublicSources === false) {
-        // Filter out sources where owner is 'open'. 
-        // Note: fetchCustomSources returns API objects. We need to check structure.
-        // The API returns array of { id, name, version, ..., owner: 'open' || 'username' }
+    // 如果 list 为 null（后端拦截）或者前端计算出受限，则启用锁定展示
+    const shouldShowHidden = (list === null) || isPublicRestrictionActive;
+
+    // Filter based on setting (if list is successfully fetched)
+    if (list && settings.enablePublicSources === false) {
         list = list.filter(item => item.owner !== 'open');
     }
 
@@ -8819,7 +8853,9 @@ async function renderCustomSources() {
     // 控制模态框头部的工具栏显示/隐藏
     const toolbar = document.getElementById('custom-source-toolbar');
     if (toolbar) {
-        toolbar.classList.toggle('hidden', isPublicRestrictionActive);
+        // 权限判定：如果是公开访问受限模式，且当前非管理员，则隐藏上传/导入工具栏
+        const canManageGlobal = isAdmin || !isPublicRestrictionEnabled;
+        toolbar.classList.toggle('hidden', shouldShowHidden || !canManageGlobal);
     }
 
     // 渲染目标容器 ID 列表：模态框内 & 设置界面内
@@ -8829,8 +8865,8 @@ async function renderCustomSources() {
         const container = document.getElementById(containerId);
         if (!container) return;
 
-        // 如果开启了公开限制，且未登录管理员，则显示锁定提示
-        if (isPublicRestrictionActive) {
+        // 如果开启了公开限制且未通过验证，则显示锁定提示
+        if (shouldShowHidden) {
             container.innerHTML = `
                 <div class="flex flex-col items-center justify-center p-8 t-text-muted">
                     <div class="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mb-4">
@@ -8845,7 +8881,7 @@ async function renderCustomSources() {
         }
 
         // 空状态
-        if (list.length === 0) {
+        if (!list || list.length === 0) {
             container.innerHTML = `
                 <div class="flex flex-col items-center justify-center p-6 t-text-muted">
                     <i class="fas fa-box-open text-3xl mb-3 opacity-30"></i>
@@ -8906,10 +8942,17 @@ async function renderCustomSources() {
                     statusBadge = `<span class="text-[10px] bg-red-50 text-red-600 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30 px-1.5 py-0.5 rounded-full border border-red-100 flex items-center gap-1 cursor-help transition-colors" title="${source.error || '加载失败'}"><i class="fas fa-times-circle"></i>失败</span>`;
                     errorMsg = `<div class="text-[10px] text-red-500 dark:text-red-400 mt-1 flex items-start gap-1 p-1.5 bg-red-50 dark:bg-red-900/20 rounded transition-colors"><i class="fas fa-info-circle mt-0.5 flex-shrink-0"></i><span class="break-all">${source.error || '未知错误'}</span></div>`;
                 } else {
-                    // If enabled but no status (yet), assume initializing or loaded before status tracking
                     statusBadge = `<span class="text-[10px] bg-blue-50 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30 px-1.5 py-0.5 rounded-full border border-blue-100 flex items-center gap-1 transition-colors"><i class="fas fa-circle-notch fa-spin"></i>加载...</span>`;
                 }
             }
+
+            const ownerTag = (source.owner && source.owner !== 'open') ?
+                `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-50 text-purple-600">${source.owner}</span>` :
+                `<span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-500">公开</span>`;
+
+            // 权限判断：管理员有所有权限；登录用户对公开源只有查看使用（Toggle）权限，无法刷新或删除
+            const isPublic = source.owner === 'open';
+            const canManageSource = isAdmin || (!isPublic && isUser);
 
             div.innerHTML = `
             <div class="flex items-center self-stretch cursor-grab custom-source-handle t-text-muted hover:text-emerald-500 pr-4 -ml-2 transition-all active:scale-110 touch-none" title="拖拽排序">
@@ -8919,7 +8962,8 @@ async function renderCustomSources() {
                 <div class="flex-1 pr-4 min-w-0">
                     <div class="flex items-center gap-2 mb-1">
                         <i class="fas fa-file-code text-emerald-500 flex-shrink-0"></i>
-                        ${createMarqueeHtml(source.name, "font-bold t-text-main text-sm")}
+                         ${createMarqueeHtml(source.name, "font-bold t-text-main text-sm")}
+                        ${ownerTag}
                     </div>
                     ${errorMsg}
                     <div class="flex flex-wrap items-center text-[10px] t-text-muted gap-x-3 gap-y-1 mt-1.5">
@@ -8940,18 +8984,19 @@ async function renderCustomSources() {
                     </button>
                     
                     <div class="flex items-center gap-1">
-                        ${source.enabled && source.status === 'failed' ? `
+                        ${source.enabled && source.status === 'failed' && canManageSource ? `
                         <button onclick="reloadSource('${source.id}')" 
                                 class="p-1.5 text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/40 rounded-lg transition-colors"
                                 title="尝试重新加载">
                             <i class="fas fa-sync-alt text-sm"></i>
                         </button>` : ''}
                         
+                        ${canManageSource ? `
                         <button onclick="deleteSource('${source.id}')" 
                                 class="p-1.5 t-text-muted hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/40 rounded-lg transition-colors"
                                 title="删除">
                             <i class="fas fa-trash-alt text-sm"></i>
-                        </button>
+                        </button>` : ''}
                     </div>
                 </div>
             </div>
@@ -8960,8 +9005,7 @@ async function renderCustomSources() {
         });
 
         // Add Sortable (Optimized for Mobile)
-        if (typeof Sortable !== 'undefined') {
-            // Destroy existing instance to avoid duplicates
+        if (containerId === 'custom-sources-list' && typeof Sortable !== 'undefined') {
             try {
                 const oldSortable = Sortable.get(container);
                 if (oldSortable) oldSortable.destroy();
@@ -8973,58 +9017,12 @@ async function renderCustomSources() {
                 ghostClass: 'sortable-ghost-solid',
                 chosenClass: 'sortable-chosen-item',
                 dragClass: 'sortable-drag-item',
-
-                // 核心配置
                 forceFallback: true,
-                fallbackOnBody: false,
-                fallbackTolerance: 0,
-
-                // 响应优化
                 delay: 200,
                 delayOnTouchOnly: true,
-                touchStartThreshold: 5,
-
-                // 排序逻辑
-                swapThreshold: 0.5,
-                invertSwap: true,
-                direction: 'vertical',
-
-                onStart: function () {
-                    document.body.classList.add('select-none');
-                },
                 onEnd: async function (evt) {
-                    document.body.classList.remove('select-none');
                     const items = Array.from(container.querySelectorAll('.source-item'));
-
-                    // Parse current state from DOM after drag
-                    const draggedItem = evt.item;
-                    const draggedId = draggedItem.dataset.id;
-                    const isEnabled = draggedItem.dataset.enabled === 'true';
-
-                    // Separate into enabled and disabled to enforce grouping
-                    let enabledIds = [];
-                    let disabledIds = [];
-
-                    items.forEach(el => {
-                        const id = el.dataset.id;
-                        const stateEnabled = el.dataset.enabled === 'true';
-
-                        // Enforce logic: an item keeps its enabled/disabled state, 
-                        // we just figure out its relative order within its group.
-                        if (stateEnabled) {
-                            enabledIds.push(id);
-                        } else {
-                            disabledIds.push(id);
-                        }
-                    });
-
-                    // Check if a swap occurred across boundaries causing a weird state?
-                    // Actually, the UI just re-arranged the divs. By separating them into enabledIds and disabledIds, 
-                    // we automatically force enabled to be before disabled.
-                    // If an enabled source was dragged to the disabled section, it will naturally be at the end of the enabledIds array (because it was placed after other enabled items).
-                    // Same vice versa.
-
-                    const finalOrderIds = [...enabledIds, ...disabledIds];
+                    const finalOrderIds = items.map(el => el.dataset.id);
 
                     try {
                         const username = currentListData?.username || 'default';
@@ -9039,31 +9037,23 @@ async function renderCustomSources() {
                         });
 
                         if (response.status === 403) {
-                            const result = await response.json();
-                            showError(result.error || '权限限制：保存排序需要管理员权限。');
+                            showError('权限限制：保存排序需要管理员身份。');
                             const authorized = await handleAdminAuth('保存排序需要管理员身份');
-                            if (authorized) {
-                                // 管理员验证成功后会自动刷新 UI 状态
-                                renderCustomSources();
-                            }
+                            if (authorized) renderCustomSources();
                             return;
                         }
-
                         if (!response.ok) throw new Error('Reorder failed');
-
-                        // Re-render to show the forcefully corrected order (enabled on top)
                         renderCustomSources();
                     } catch (error) {
                         console.error('Reorder error:', error);
-                        showError('保存排序失败，请检查网络或管理员权限状态');
-                        renderCustomSources(); // Revert UI
+                        showError('保存排序失败');
+                        renderCustomSources();
                     }
                 }
             });
         }
     });
 
-    // Apply dynamic marquee checks after rendering source list
     if (typeof applyMarqueeChecks === 'function') {
         applyMarqueeChecks();
     }
