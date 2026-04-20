@@ -3303,9 +3303,10 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
         }
         res.writeHead(200, {
           'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
+          'Cache-Control': 'no-cache, no-transform',
           'Connection': 'keep-alive',
           'Access-Control-Allow-Origin': '*',
+          'X-Accel-Buffering': 'no', // 关键：禁用 Nginx 等代理的缓冲
         })
         res.write('retry: 3000\n\n')
         musicProgressClients.set(reqId, res)
@@ -3337,14 +3338,14 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
         void readBody(req).then(async body => {
           // 辅助：通过 SSE 推送进度（内置竞态重试，最多等 600ms 让 SSE 连接就绪）
           let sseFailed = false
-          const pushProgress = async (attempt: any, retries = 3): Promise<void> => {
+          const pushProgress = async (attempt: any, retries = 10): Promise<void> => {
             if (!reqId || sseFailed) return
             if (musicProgressClients.has(reqId)) {
               musicProgressClients.get(reqId)!.write(`data: ${JSON.stringify(attempt)}\n\n`)
               return
             }
             if (retries > 0) {
-              await new Promise(r => setTimeout(r, 200))
+              await new Promise(r => setTimeout(r, 300))
               await pushProgress(attempt, retries - 1)
             } else {
               sseFailed = true

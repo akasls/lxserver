@@ -1875,7 +1875,7 @@ function renderArtistSongsUI(list, page) {
         return `
                 <div class="${rowClass}" data-song-id="${item.id}" onclick="window.batchMode ? handleBatchSelect('${item.id}', !window.selectedItems.has('${item.id}')) : playFromView(${index})">
                     <!-- Index -->
-                    <div class="col-span-3 sm:col-span-1 text-center flex items-center justify-center font-mono text-xs t-text-muted group-hover:t-text-main">
+                    <div class="col-span-1 sm:col-span-1 text-center flex items-center justify-center font-mono text-xs t-text-muted group-hover:t-text-main">
                         ${window.batchMode ? `
                             <input type="checkbox" 
                                    class="batch-checkbox w-4 h-4 text-emerald-600 rounded" 
@@ -1886,7 +1886,7 @@ function renderArtistSongsUI(list, page) {
                     </div>
 
                     <!-- Title -->
-                    <div class="col-span-7 sm:col-span-7 md:col-span-6 lg:col-span-4 flex items-center gap-3 min-w-0">
+                    <div class="col-span-9 sm:col-span-7 md:col-span-6 lg:col-span-4 flex items-center gap-3 min-w-0">
                         <div class="w-10 h-10 md:w-12 md:h-12 rounded-lg overflow-hidden flex-shrink-0 shadow-sm relative">
                             <img src="${item.img || '/music/assets/logo.svg'}" 
                                  onerror="this.src='/music/assets/logo.svg'" 
@@ -2269,7 +2269,7 @@ function renderResults(list) {
 
         row.innerHTML = `
             <!-- Index -->
-            <div class="col-span-3 sm:col-span-1 text-center font-mono t-text-muted text-xs md:text-sm flex items-center justify-center">
+            <div class="col-span-1 sm:col-span-1 text-center font-mono t-text-muted text-xs md:text-sm flex items-center justify-center">
                 ${window.batchMode ? `
                     <input type="checkbox" 
                            class="batch-checkbox w-4 h-4 text-emerald-600 rounded" 
@@ -2280,7 +2280,7 @@ function renderResults(list) {
             </div>
 
             <!-- Title (Image + Text) -->
-            <div class="col-span-7 sm:col-span-7 md:col-span-6 ${titleLgSpan} flex items-center overflow-hidden pr-2">
+            <div class="col-span-9 sm:col-span-7 md:col-span-6 ${titleLgSpan} flex items-center overflow-hidden pr-2">
                 <div class="relative w-10 h-10 md:w-12 md:h-12 mr-3 md:mr-4 flex-shrink-0 group cursor-pointer">
                      <img data-src="${imgUrl}" src="/music/assets/logo.svg" 
                           loading="lazy" fetchpriority="low"
@@ -2810,6 +2810,9 @@ async function fetchSongUrl(song, quality, isRetry = false, isSilent = false) {
     Object.assign(headers, getUserAuthHeaders());
     headers['x-req-id'] = reqId;
 
+    // [Fix] 给予 SSE 连接极短的建连时间，确保并发请求下后端能优先捕获到 SSE 客户端
+    await new Promise(r => setTimeout(r, 50));
+
     try {
         const res = await fetch(`${API_BASE}/url`, {
             method: 'POST',
@@ -3056,6 +3059,15 @@ function updateAdminUI() {
     if (logoutBtn) logoutBtn.classList.toggle('hidden', !isAdmin);
     if (loginBtn) {
         loginBtn.classList.toggle('hidden', isAdmin || !window.lx_config?.['user.enablePublicRestriction'] || !isPublic);
+    }
+    const manageBtn = document.getElementById('btn-custom-source-manage');
+    if (manageBtn) {
+        const isPublicRestrictionEnabled = !!window.lx_config?.['user.enablePublicRestriction'];
+        const isUser = !!userToken;
+        // 如果开启了公开限制，且既不是管理员也不是登录用户，则隐藏管理入口（或之后显示锁定界面）
+        // 这里根据用户要求，只要登录了就不隐藏
+        const isRestricted = isPublicRestrictionEnabled && !isAdmin && !isUser;
+        manageBtn.classList.toggle('hidden', isRestricted);
     }
     if (scopeTag) {
         scopeTag.classList.toggle('hidden', !isPublic);
@@ -8574,7 +8586,7 @@ async function handleFileUpload(input) {
         // 先验证脚本
         showInfo('正在验证脚本...');
         const adminPass = localStorage.getItem('lx_admin_password');
-        const headers = { 'Content-Type': 'application/json' };
+        const headers = { 'Content-Type': 'application/json', ...getUserAuthHeaders() };
         if (adminPass) headers['x-frontend-auth'] = adminPass;
 
         let validationRes = await fetch('/api/custom-source/validate', {
@@ -8653,7 +8665,7 @@ async function handleUrlImport() {
         showInfo('正在获取并验证远程脚本...');
 
         const username = currentListData?.username || 'default';
-        const headers = { 'Content-Type': 'application/json' };
+        const headers = { 'Content-Type': 'application/json', ...getUserAuthHeaders() };
         const adminPass = localStorage.getItem('lx_admin_password');
         if (adminPass) headers['x-frontend-auth'] = adminPass;
 
@@ -8686,7 +8698,7 @@ async function handleUrlImport() {
         if (result.requireUnsafe) {
             const confirmed = await showSelect('安全风险确认', result.message || '该脚本需要原生 VM 模式运行，可能存在安全风险，是否继续？', { danger: true, confirmText: '允许并导入' });
             if (confirmed) {
-                const retryHeaders = { 'Content-Type': 'application/json' };
+                const retryHeaders = { 'Content-Type': 'application/json', ...getUserAuthHeaders() };
                 if (adminPass) retryHeaders['x-frontend-auth'] = adminPass;
                 const retryResp = await fetch(`/api/custom-source/import`, {
                     method: 'POST',
@@ -8695,7 +8707,7 @@ async function handleUrlImport() {
                         url,
                         filename,
                         username: username,
-                        allowUnsafeVM: true
+                        allowUnsafeVM: true,
                     })
                 });
                 if (retryResp.status === 403) {
@@ -8721,7 +8733,7 @@ async function handleUrlImport() {
 
 // 上传自定义源到服务器
 async function uploadCustomSource(filename, content, type, allowUnsafeVM = false) {
-    const headers = { 'Content-Type': 'application/json' };
+    const headers = { 'Content-Type': 'application/json', ...getUserAuthHeaders() };
     const adminPass = localStorage.getItem('lx_admin_password');
     if (adminPass) headers['x-frontend-auth'] = adminPass;
 
@@ -8853,8 +8865,8 @@ async function renderCustomSources() {
     // 控制模态框头部的工具栏显示/隐藏
     const toolbar = document.getElementById('custom-source-toolbar');
     if (toolbar) {
-        // 权限判定：如果是公开访问受限模式，且当前非管理员，则隐藏上传/导入工具栏
-        const canManageGlobal = isAdmin || !isPublicRestrictionEnabled;
+        // 权限判定：如果是公开访问受限模式，且当前非管理员且非登录用户，则隐藏上传/导入工具栏
+        const canManageGlobal = isAdmin || isUser || !isPublicRestrictionEnabled;
         toolbar.classList.toggle('hidden', shouldShowHidden || !canManageGlobal);
     }
 
@@ -9026,7 +9038,7 @@ async function renderCustomSources() {
 
                     try {
                         const username = currentListData?.username || 'default';
-                        const headers = { 'Content-Type': 'application/json' };
+                        const headers = { 'Content-Type': 'application/json', ...getUserAuthHeaders() };
                         const adminPass = localStorage.getItem('lx_admin_password');
                         if (adminPass) headers['x-frontend-auth'] = adminPass;
 
@@ -9063,9 +9075,13 @@ async function renderCustomSources() {
 async function reloadSource(sourceId) {
     try {
         const username = currentListData?.username || 'default';
+        const adminPass = localStorage.getItem('lx_admin_password');
+        const headers = { 'Content-Type': 'application/json', ...getUserAuthHeaders() };
+        if (adminPass) headers['x-frontend-auth'] = adminPass;
+
         const response = await fetch('/api/custom-source/toggle', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: headers,
             body: JSON.stringify({ username, sourceId, enabled: true }) // Force enable triggers reload
         });
 
@@ -9087,7 +9103,7 @@ async function reloadSource(sourceId) {
 async function toggleSource(sourceId, currentEnabled, allowUnsafeVM = false) {
     try {
         const username = currentListData?.username || 'default';
-        const headers = { 'Content-Type': 'application/json' };
+        const headers = { 'Content-Type': 'application/json', ...getUserAuthHeaders() };
         const adminPass = localStorage.getItem('lx_admin_password');
         if (adminPass) headers['x-frontend-auth'] = adminPass;
 
@@ -9134,7 +9150,7 @@ async function deleteSource(sourceId) {
 
     try {
         const username = currentListData?.username || 'default';
-        const headers = { 'Content-Type': 'application/json' };
+        const headers = { 'Content-Type': 'application/json', ...getUserAuthHeaders() };
         const adminPass = localStorage.getItem('lx_admin_password');
         if (adminPass) headers['x-frontend-auth'] = adminPass;
 

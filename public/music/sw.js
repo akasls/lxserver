@@ -38,8 +38,6 @@ const ASSETS_TO_CACHE = [
     './assets/logo.svg',
 ];
 
-const AUDIO_CACHE_NAME = 'lx-music-audio-v1';
-
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
@@ -52,36 +50,19 @@ self.addEventListener('install', (event) => {
 self.addEventListener('fetch', (event) => {
     const url = new URL(event.request.url);
 
-    // 1. 特殊处理音频请求 (可能是代理请求或直接链接)
-    // 拦截 API 下载/流接口 或 常见的音频后缀
-    const isAudioRequest = url.pathname.includes('/api/music/download') ||
-        url.pathname.includes('/api/music/cache/file') ||
+    // 1. 过滤非 http(s) 协议 (如 chrome-extension://)，避免 cache.put 报错
+    if (!url.protocol.startsWith('http')) return;
+
+    // 2. 忽略所有音频请求、下载请求和 API 请求，让浏览器直接处理
+    // 拦截下载会导致大文件占用 Cache 且单个失败可能引起 SW state 不良
+    const isApiOrAudio = url.pathname.includes('/api/') ||
         url.href.match(/\.(mp3|flac|m4a|ogg|aac)(\?.*)?$/i);
 
-    if (isAudioRequest && event.request.method === 'GET') {
-        event.respondWith(
-            caches.open(AUDIO_CACHE_NAME).then((cache) => {
-                return cache.match(event.request).then((response) => {
-                    if (response) {
-                        console.log('[SW] Audio Cache Hit:', url.pathname);
-                        return response;
-                    }
-
-                    return fetch(event.request).then((networkResponse) => {
-                        // 只有 200 才缓存 (Cache API 不支持缓存 206 Partial Content)
-                        if (networkResponse && networkResponse.status === 200) {
-                            console.log('[SW] Caching Audio:', url.pathname);
-                            cache.put(event.request, networkResponse.clone());
-                        }
-                        return networkResponse;
-                    });
-                });
-            })
-        );
-        return;
+    if (isApiOrAudio) {
+        return; // 直接 return 就不走 event.respondWith，相当于不拦截
     }
 
-    // 2. 常规静态资源采用 Network First 或 Stale-While-Revalidate
+    // 3. 常规静态资源采用 Network First 策略
     if (event.request.method !== 'GET') return;
 
     event.respondWith(
@@ -91,7 +72,9 @@ self.addEventListener('fetch', (event) => {
                 if (response && response.status === 200 && response.type === 'basic') {
                     const responseToCache = response.clone();
                     caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(event.request, responseToCache);
+                        cache.put(event.request, responseToCache).catch(err => {
+                            console.error('[SW] Cache put error:', err);
+                        });
                     });
                 }
                 return response;
@@ -103,7 +86,7 @@ self.addEventListener('fetch', (event) => {
     );
 });
 
-const KNOWN_CACHES = [CACHE_NAME, AUDIO_CACHE_NAME];
+const KNOWN_CACHES = [CACHE_NAME];
 
 self.addEventListener('activate', (event) => {
     event.waitUntil(
