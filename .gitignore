@@ -82,3 +82,5 @@ tests/
 .stylelintrc.json
 reference/
 music/
+
+public/music/bin

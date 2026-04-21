@@ -7,6 +7,7 @@ import https from 'https'
 import { PassThrough } from 'stream'
 const { MusicTagger, MetaPicture } = require('music-tag-native')
 import { buildLyrics, parseLyrics } from '../utils/lrcTool'
+import { formatPlayTime } from '../common/utils/common'
 
 // --- Cache Naming Patterns ---
 export const CACHE_NAMING_PATTERNS = {
@@ -39,7 +40,7 @@ export const cacheProgress: Map<string, { progress: number; status: string; tota
 // [New] Active Cache Tasks Tracker: username -> [ { songKey, controller } ]
 export const activeTasks: Map<string, Array<{ songKey: string, controller: AbortController }>> = new Map()
 
-const getCacheDir = (username?: string, isOnlyDownload?: boolean) => {
+export const getCacheDir = (username?: string, isOnlyDownload?: boolean) => {
     const folderName = isOnlyDownload ? 'music' : 'cache'
     let baseDir = ''
     if (currentCacheLocation === CACHE_ROOTS.DATA) {
@@ -78,13 +79,27 @@ interface CacheItem {
     ext: string
     hasCover?: boolean
     hasLyric?: boolean
+    bitrate?: number
+    sampleRate?: number
+    bitDepth?: number
 }
 
 class CacheIndexManager {
-    private indexes: Map<string, Map<string, CacheItem>> = new Map() // "username:folder" -> (songId -> CacheItem)
+    private indexes: Map<string, Map<string, CacheItem>> = new Map() // "location:username:folder" -> (songId -> CacheItem)
 
-    private getIndexFile(username: string, folder: 'cache' | 'music') {
-        const userDir = getCacheDir(username, folder === 'music')
+    private getIndexFile(username: string, folder: 'cache' | 'music', location?: string) {
+        const loc = location || currentCacheLocation
+        const folderName = folder === 'music' ? 'music' : 'cache'
+        let baseDir = ''
+        if (loc === CACHE_ROOTS.DATA) {
+            baseDir = path.join(global.lx.dataPath, folderName)
+        } else {
+            baseDir = path.join(process.cwd(), folderName)
+        }
+
+        const userDirName = (username && username !== '_open' && username !== 'default') ? username : '_open'
+        const userDir = path.join(baseDir, userDirName)
+
         if (!fs.existsSync(userDir)) {
             fs.mkdirSync(userDir, { recursive: true })
         }
@@ -92,13 +107,13 @@ class CacheIndexManager {
         return path.join(userDir, fileName)
     }
 
-    private getKey(username: string, folder: 'cache' | 'music') {
-        return `${username}:${folder}`
+    private getKey(username: string, folder: 'cache' | 'music', location?: string) {
+        return `${location || currentCacheLocation}:${username}:${folder}`
     }
 
-    load(username: string, folder: 'cache' | 'music') {
-        const key = this.getKey(username, folder)
-        const file = this.getIndexFile(username, folder)
+    load(username: string, folder: 'cache' | 'music', location?: string) {
+        const key = this.getKey(username, folder, location)
+        const file = this.getIndexFile(username, folder, location)
         if (fs.existsSync(file)) {
             try {
                 const data = JSON.parse(fs.readFileSync(file, 'utf-8'))
@@ -112,12 +127,13 @@ class CacheIndexManager {
         return this.indexes.get(key)!
     }
 
-    save(username: string, folder: 'cache' | 'music') {
-        const key = this.getKey(username, folder)
+    save(username: string, folder: 'cache' | 'music', location?: string) {
+        const loc = location || currentCacheLocation
+        const key = this.getKey(username, folder, loc)
         const index = this.indexes.get(key)
         if (!index) return
 
-        const file = this.getIndexFile(username, folder)
+        const file = this.getIndexFile(username, folder, loc)
         try {
             const data = Object.fromEntries(index)
             fs.writeFileSync(file, JSON.stringify(data, null, 2))
@@ -126,8 +142,9 @@ class CacheIndexManager {
         }
     }
 
-    get(username: string, songId: string, folder: 'cache' | 'music', quality?: string, exact: boolean = false) {
-        const index = this.indexes.get(this.getKey(username, folder)) || this.load(username, folder)
+    get(username: string, songId: string, folder: 'cache' | 'music', quality?: string, exact: boolean = false, location?: string) {
+        const key = this.getKey(username, folder, location)
+        const index = this.indexes.get(key) || this.load(username, folder, location)
         if (quality) {
             const item = index.get(`${songId}_${quality}`)
             if (item) return item
@@ -136,43 +153,45 @@ class CacheIndexManager {
         }
         // Fallback: 非精确模式下扫描同 ID 的任意质量
         const prefix = `${songId}_`
-        for (const [key, item] of index.entries()) {
-            if (key === songId || key.startsWith(prefix)) return item
+        for (const [k, item] of index.entries()) {
+            if (k === songId || k.startsWith(prefix)) return item
         }
         return undefined
     }
 
-    update(username: string, item: CacheItem, folder: 'cache' | 'music') {
-        const index = this.indexes.get(this.getKey(username, folder)) || this.load(username, folder)
+    update(username: string, item: CacheItem, folder: 'cache' | 'music', location?: string) {
+        const key = this.getKey(username, folder, location)
+        const index = this.indexes.get(key) || this.load(username, folder, location)
         // Use composite key id_quality
-        const key = `${item.id}_${item.quality || 'unknown'}`
-        index.set(key, item)
-        this.save(username, folder)
+        const itemKey = `${item.id}_${item.quality || 'unknown'}`
+        index.set(itemKey, item)
+        this.save(username, folder, location)
     }
 
-    remove(username: string, songId: string, folder: 'cache' | 'music', quality?: string) {
-        const index = this.indexes.get(this.getKey(username, folder)) || this.load(username, folder)
+    remove(username: string, songId: string, folder: 'cache' | 'music', quality?: string, location?: string) {
+        const key = this.getKey(username, folder, location)
+        const index = this.indexes.get(key) || this.load(username, folder, location)
         if (quality) {
             if (index.delete(`${songId}_${quality}`)) {
-                this.save(username, folder)
+                this.save(username, folder, location)
                 return true
             }
         }
         // Legacy or bulk remove by ID
         let deleted = false
         const prefix = `${songId}_`
-        for (const key of Array.from(index.keys())) {
-            if (key === songId || key.startsWith(prefix)) {
-                index.delete(key)
+        for (const k of Array.from(index.keys())) {
+            if (k === songId || k.startsWith(prefix)) {
+                index.delete(k)
                 deleted = true
             }
         }
-        if (deleted) this.save(username, folder)
+        if (deleted) this.save(username, folder, location)
         return deleted
     }
 
-    getAll(username: string, folder: 'cache' | 'music') {
-        return Array.from((this.indexes.get(this.getKey(username, folder)) || this.load(username, folder)).values())
+    getAll(username: string, folder: 'cache' | 'music', location?: string) {
+        return Array.from((this.indexes.get(this.getKey(username, folder, location)) || this.load(username, folder, location)).values())
     }
 }
 
@@ -215,6 +234,28 @@ const extractSongMetadata = (songInfo: any) => {
         interval: songInfo.interval || meta.interval || '',
         source: songInfo.source || 'unknown'
     }
+}
+
+/**
+ * Detect quality tag from bitrate and file metadata
+ */
+const detectQualityFromBitrate = (bitrate: number | undefined, ext: string, tagger?: any): LX.Quality => {
+    const isLossless = (ext === '.flac' || ext === '.wav' || ext === '.ape')
+    const br = bitrate || 0 // Already in kbps from music-tag-native
+
+    if (isLossless) {
+        const bitDepth = tagger?.bitDepth || 16
+        const sampleRate = tagger?.sampleRate || 44100
+
+        if (br > 4500 || sampleRate > 96000) return 'master' as LX.Quality
+        if (br > 1000 || bitDepth > 16 || sampleRate > 48000) return 'flac24bit'
+        return 'flac'
+    }
+
+    // Lossy formats (mp3, m4a, etc.)
+    if (br >= 240) return '320k'
+    if (br >= 170) return '192k'
+    return '128k'
 }
 
 // Generate consistent filename based on pattern with collision handling
@@ -336,6 +377,11 @@ export const syncCacheIndex = async (username?: string) => {
                         singer = segmentsShort[1]
                         quality = segmentsShort[2] || 'unknown'
                         songId = nameWithoutExt // Fallback ID for unknown files
+                    } else {
+                        // Fallback for completely unknown filenames (e.g. download_4.mp3)
+                        songId = nameWithoutExt
+                        source = 'unknown'
+                        quality = 'unknown'
                     }
                 }
             }
@@ -346,15 +392,44 @@ export const syncCacheIndex = async (username?: string) => {
             const compositeKey = `${normalizedId}_${quality || 'unknown'}`
             foundKeysOnDisk.add(compositeKey)
 
-            // Update or add to index if missing info or changed
-            if (!existing || existing.size !== stats.size) {
+            // Always check for companion lyric file
+            const lrcFile = nameWithoutExt + '.lrc'
+            const hasLyricOnDisk = fs.existsSync(path.join(dir, lrcFile))
+
+            // Update or add to index if anything changed (size, mtime, or lyric status)
+            if (!existing || existing.size !== stats.size || existing.hasLyric !== hasLyricOnDisk || !existing.interval || existing.quality === 'unknown' || !existing.bitrate) {
+                let interval = existing?.interval || ''
+                let detectedQuality: LX.Quality = (existing?.quality as LX.Quality) || 'unknown'
+                let bitrate = existing?.bitrate
+                let sampleRate = existing?.sampleRate
+                let bitDepth = existing?.bitDepth
+
                 if (existing) {
                     existing.size = stats.size
                     existing.mtime = stats.mtimeMs
-                    const lrcFile = nameWithoutExt + '.lrc'
-                    existing.hasLyric = fs.existsSync(path.join(dir, lrcFile))
-                    if (existing.hasLyric) existing.lyricFilename = lrcFile
+                    existing.hasLyric = hasLyricOnDisk
+                    existing.lyricFilename = hasLyricOnDisk ? lrcFile : undefined
+
+                    // If interval or quality/bitrate is missing/unknown, try to extract it
+                    if (!existing.interval || existing.quality === 'unknown' || !existing.bitrate) {
+                        try {
+                            const tagger = new MusicTagger()
+                            tagger.loadPath(filePath)
+                            const dur = tagger.duration
+                            if (dur && !existing.interval) existing.interval = formatPlayTime(dur / 1000)
+
+                            existing.bitrate = tagger.bitRate
+                            existing.sampleRate = tagger.sampleRate
+                            existing.bitDepth = tagger.bitDepth
+
+                            if (!existing.quality || existing.quality === 'unknown') {
+                                existing.quality = detectQualityFromBitrate(tagger.bitRate, ext, tagger)
+                            }
+                            tagger.dispose()
+                        } catch (e) { }
+                    }
                 } else {
+                    // (New file logic remains same but uses hasLyricOnDisk)
                     try {
                         const tagger = new MusicTagger()
                         tagger.loadPath(filePath)
@@ -362,31 +437,40 @@ export const syncCacheIndex = async (username?: string) => {
                         if (tagger.artist && !singer) singer = tagger.artist
                         if (tagger.album && !album) album = tagger.album
                         if (tagger.pictures && tagger.pictures.length > 0) hasCover = true
+
+                        const dur = tagger.duration
+                        if (dur) interval = formatPlayTime(dur / 1000)
+
+                        bitrate = tagger.bitRate
+                        sampleRate = tagger.sampleRate
+                        bitDepth = tagger.bitDepth
+                        detectedQuality = detectQualityFromBitrate(tagger.bitRate, ext, tagger)
+
                         tagger.dispose()
                     } catch (e) { }
-
-                    const lrcFile = nameWithoutExt + '.lrc'
-                    const hasLyric = fs.existsSync(path.join(dir, lrcFile))
 
                     const item: CacheItem = {
                         id: normalizedId,
                         songmid: normalizedId,
-                        name: songName || 'Unknown',
+                        name: songName || nameWithoutExt || 'Unknown',
                         singer: singer || 'Unknown',
                         album: album || '',
                         albumId: '',
                         img: '',
-                        interval: '',
+                        interval: interval,
                         source: source || 'unknown',
-                        quality: quality || 'unknown',
+                        quality: detectedQuality,
                         filename: file,
                         folder: folder as any,
                         mtime: stats.mtimeMs,
                         size: stats.size,
-                        lyricFilename: hasLyric ? lrcFile : undefined,
+                        lyricFilename: hasLyricOnDisk ? lrcFile : undefined,
                         ext: ext.replace('.', ''),
                         hasCover: hasCover,
-                        hasLyric: hasLyric
+                        hasLyric: hasLyricOnDisk,
+                        bitrate: bitrate,
+                        sampleRate: sampleRate,
+                        bitDepth: bitDepth
                     }
                     index.set(compositeKey, item)
                 }
@@ -529,29 +613,192 @@ export const batchRenameCacheFiles = async (username: string | undefined) => {
 }
 
 /**
+ * Batch update ID3 metadata (title, artist, album, cover) from index to physical files
+ */
+export const batchUpdateMetadata = async (filenames: string[], username: string | undefined) => {
+    const normalizedUsername = (username && username !== '_open' && username !== 'default') ? username : '_open'
+    let successCount = 0
+    let failCount = 0
+
+    const allItems = [
+        ...indexManager.getAll(normalizedUsername, 'cache'),
+        ...indexManager.getAll(normalizedUsername, 'music')
+    ]
+
+    for (const filename of filenames) {
+        const item = allItems.find(i => i.filename === filename)
+        if (!item) {
+            failCount++
+            continue
+        }
+
+        const dir = getCacheDir(normalizedUsername, item.folder === 'music')
+        const filePath = path.join(dir, item.filename)
+
+        if (!fs.existsSync(filePath)) {
+            failCount++
+            continue
+        }
+
+        try {
+            let imageBuffer: Buffer | undefined
+            const imageUrl = item.img
+            if (imageUrl && imageUrl.startsWith('http')) {
+                const chunks: Buffer[] = []
+                const p = imageUrl.startsWith('https') ? https : http
+                imageBuffer = await new Promise<Buffer>((resolveI, rejectI) => {
+                    const req = p.get(imageUrl, ires => {
+                        ires.on('data', c => chunks.push(c))
+                        ires.on('end', () => resolveI(Buffer.concat(chunks)))
+                        ires.on('error', rejectI)
+                    })
+                    req.on('error', rejectI)
+                    setTimeout(() => { req.destroy(); rejectI(new Error('Timeout')) }, 8000)
+                }).catch(() => undefined)
+            }
+
+            const tagger = new MusicTagger()
+            tagger.loadPath(filePath)
+            tagger.title = item.name || 'Unknown'
+            tagger.artist = item.singer || 'Unknown'
+            if (item.album) tagger.album = item.album
+
+            if (imageBuffer && imageBuffer.length > 0) {
+                tagger.pictures = [new MetaPicture('image/jpeg', new Uint8Array(imageBuffer), 'Cover')]
+                item.hasCover = true
+            } else if (tagger.pictures && tagger.pictures.length > 0) {
+                item.hasCover = true
+            } else {
+                item.hasCover = false
+            }
+            tagger.save()
+            tagger.dispose()
+
+            const stats = fs.statSync(filePath)
+            item.mtime = stats.mtimeMs
+            item.size = stats.size
+
+            indexManager.update(normalizedUsername, item, item.folder as 'cache' | 'music')
+            successCount++
+        } catch (e) {
+            console.error(`[FileCache] Failed to update metadata for ${filename}:`, e)
+            failCount++
+        }
+    }
+
+    return { successCount, failCount }
+}
+
+/**
+ * Link an unindexed local file to a specific online song identity
+ */
+export const linkLocalFile = async (oldFilename: string, songInfo: any, username: string | undefined) => {
+    const normalizedUsername = (username && username !== '_open' && username !== 'default') ? username : '_open'
+
+    // Find the item in all possible folders
+    const allItems = [
+        ...indexManager.getAll(normalizedUsername, 'cache'),
+        ...indexManager.getAll(normalizedUsername, 'music')
+    ]
+    const item = allItems.find(i => i.filename === oldFilename)
+    if (!item) throw new Error('File not found in index')
+
+    const folder = item.folder as 'cache' | 'music'
+    const dir = getCacheDir(normalizedUsername, folder === 'music')
+    const oldPath = path.join(dir, item.filename)
+    if (!fs.existsSync(oldPath)) throw new Error('Physical file not found')
+
+    // Prepare new metadata from songInfo
+    const metadata = extractSongMetadata(songInfo)
+    const newId = metadata.id
+    const quality = item.quality || 'unknown'
+    const ext = item.ext ? `.${item.ext}` : path.extname(oldFilename)
+
+    // Generate new filename based on pattern
+    const newBaseName = getFileName(songInfo, quality, folder === 'music', normalizedUsername)
+    const newFilename = newBaseName + ext
+    const newPath = path.join(dir, newFilename)
+
+    // Check collision
+    if (newFilename !== oldFilename && fs.existsSync(newPath)) {
+        throw new Error('Target filename already exists on disk')
+    }
+
+    // 1. Rename physical file
+    if (newFilename !== oldFilename) {
+        fs.renameSync(oldPath, newPath)
+        // Also rename lyrics if exists
+        if (item.lyricFilename) {
+            const oldLrcPath = path.join(dir, item.lyricFilename)
+            const newLrcFilename = newBaseName + '.lrc'
+            const newLrcPath = path.join(dir, newLrcFilename)
+            if (fs.existsSync(oldLrcPath)) {
+                fs.renameSync(oldLrcPath, newLrcPath)
+                item.lyricFilename = newLrcFilename
+            }
+        }
+    }
+
+    // 2. Update Index
+    // Remove old entry (keyed by old ID and quality)
+    indexManager.remove(normalizedUsername, item.id, folder, item.quality)
+
+    // Update item properties
+    item.id = newId
+    item.songmid = newId
+    item.name = metadata.name
+    item.singer = metadata.singer
+    item.album = metadata.album
+    item.albumId = metadata.albumId
+    item.img = metadata.img
+    item.source = metadata.source
+    item.filename = newFilename
+    item.mtime = Date.now()
+
+    // Add back to index with new identity
+    indexManager.update(normalizedUsername, item, folder)
+
+    // 3. Post-link processing: Update ID3 tags and cover
+    await batchUpdateMetadata([newFilename], normalizedUsername)
+
+    return {
+        success: true,
+        filename: newFilename,
+        id: newId,
+        metadata
+    }
+}
+
+
+/**
  * Get cover image for a cached file
  */
 export const getCacheCover = (filename: string, username?: string) => {
-    const dir = getCacheDir(username)
-    const filePath = path.join(dir, path.basename(filename))
+    const normalizedUsername = (username && username !== '_open' && username !== 'default') ? username : '_open'
+    const roots: Array<'cache' | 'music'> = ['cache', 'music']
 
-    if (fs.existsSync(filePath)) {
-        try {
-            const tagger = new MusicTagger()
-            tagger.loadPath(filePath)
-            const pics = tagger.pictures
-            if (pics && pics.length > 0) {
-                const pic = pics[0]
-                const result = {
-                    data: Buffer.from(pic.data),
-                    mime: pic.mimeType || 'image/jpeg'
+    for (const folder of roots) {
+        const dir = getCacheDir(normalizedUsername, folder === 'music')
+        const filePath = path.join(dir, path.basename(filename))
+
+        if (fs.existsSync(filePath)) {
+            try {
+                const tagger = new MusicTagger()
+                tagger.loadPath(filePath)
+                const pics = tagger.pictures
+                if (pics && pics.length > 0) {
+                    const pic = pics[0]
+                    const result = {
+                        data: Buffer.from(pic.data),
+                        mime: pic.mimeType || 'image/jpeg'
+                    }
+                    tagger.dispose()
+                    return result
                 }
                 tagger.dispose()
-                return result
+            } catch (e) {
+                // console.error(`[Cache] Error reading tags for cover: ${filename}`, e)
             }
-            tagger.dispose()
-        } catch (e) {
-            // console.error(`[Cache] Error reading tags for cover: ${filename}`, e)
         }
     }
     return null
@@ -757,22 +1004,28 @@ export const checkLyricCache = (songInfo: any, username?: string) => {
 
 export const saveLyricCache = (songInfo: any, lyricsObj: any, username?: string, isOnlyDownload?: boolean) => {
     try {
-        const dir = ensureDir(username, isOnlyDownload)
         let baseName: string
-        let quality = 'unknown'
+        let quality = songInfo.quality || 'unknown'
+        let dir: string
 
-        if (songInfo.quality) {
-            quality = songInfo.quality
-            baseName = getFileName(songInfo, songInfo.quality, isOnlyDownload, username)
+        // First check where the audio file actually exists
+        const audioResult = checkCache({ ...songInfo, exactQuality: false }, username, false)
+
+        if (audioResult.exists && audioResult.path) {
+            // If audio exists, save lyric in the same folder
+            dir = path.dirname(audioResult.path)
+            quality = audioResult.quality || quality
+            baseName = path.basename(audioResult.path, path.extname(audioResult.path))
         } else {
-            const result = checkCache({ ...songInfo, exactQuality: false }, username, true)
-            if (result.exists && result.filename) {
-                quality = result.quality || 'unknown'
-                baseName = result.filename.substring(0, result.filename.lastIndexOf('.'))
+            // Audio not found, fallback to target dir
+            dir = ensureDir(username, isOnlyDownload)
+            if (songInfo.quality) {
+                baseName = getFileName(songInfo, songInfo.quality, isOnlyDownload, username)
             } else {
                 baseName = getFileName(songInfo, 'unknown', isOnlyDownload, username)
             }
         }
+
         const lyricFile = baseName + '.lrc'
         const finalPath = path.join(dir, lyricFile)
 
@@ -1091,3 +1344,180 @@ export const checkAndCleanupCache = async (username?: string) => {
     }
     console.log(`[FileCache] Cleaned up ${deletedCount} files for ${normalizedUsername}`)
 }
+/**
+ * Switch files between 'cache' and 'music' folders
+ */
+export const switchFolder = async (filenames: string[], username: string | undefined) => {
+    const normalizedUsername = (username && username !== '_open' && username !== 'default') ? username : '_open'
+    let successCount = 0
+    let failCount = 0
+
+    const cacheIndex = indexManager.load(normalizedUsername, 'cache')
+    const musicIndex = indexManager.load(normalizedUsername, 'music')
+
+    const cacheDir = getCacheDir(normalizedUsername, false)
+    const musicDir = getCacheDir(normalizedUsername, true)
+
+    for (const filename of filenames) {
+        let sourceFolder: 'cache' | 'music' | null = null
+        let item: CacheItem | null = null
+
+        // Find which folder it belongs to
+        const inCache = Array.from(cacheIndex.values()).find(i => i.filename === filename)
+        if (inCache) {
+            sourceFolder = 'cache'
+            item = inCache
+        } else {
+            const inMusic = Array.from(musicIndex.values()).find(i => i.filename === filename)
+            if (inMusic) {
+                sourceFolder = 'music'
+                item = inMusic
+            }
+        }
+
+        if (!sourceFolder || !item) {
+            failCount++
+            continue
+        }
+
+        const targetFolder: 'cache' | 'music' = sourceFolder === 'cache' ? 'music' : 'cache'
+        const sourceDir = sourceFolder === 'music' ? musicDir : cacheDir
+        const targetDir = targetFolder === 'music' ? musicDir : cacheDir
+
+        const sourcePath = path.join(sourceDir, filename)
+        const targetPath = path.join(targetDir, filename)
+
+        try {
+            if (fs.existsSync(sourcePath)) {
+                // Ensure target directory exists (though getCacheDir should have ensured it)
+                if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true })
+
+                // Check collision in target folder
+                if (fs.existsSync(targetPath)) {
+                    // If target already exists, skip this file
+                    console.log(`[FileCache] Move conflict: ${filename} already exists in ${targetFolder}, skipping.`)
+                    failCount++
+                    continue
+                }
+
+
+                // Move audio file
+                fs.renameSync(sourcePath, targetPath)
+
+                // Move lyric file if exists
+                if (item.lyricFilename) {
+                    const sourceLrcPath = path.join(sourceDir, item.lyricFilename)
+                    const targetLrcPath = path.join(targetDir, item.lyricFilename)
+                    if (fs.existsSync(sourceLrcPath)) {
+                        if (fs.existsSync(targetLrcPath)) fs.unlinkSync(targetLrcPath)
+                        fs.renameSync(sourceLrcPath, targetLrcPath)
+                    }
+                }
+
+                // Update Index
+                indexManager.remove(normalizedUsername, item.id, sourceFolder, item.quality)
+                item.folder = targetFolder
+                indexManager.update(normalizedUsername, item, targetFolder)
+
+                successCount++
+            } else {
+                failCount++
+            }
+        } catch (e) {
+            console.error(`[FileCache] Failed to move ${filename} from ${sourceFolder} to ${targetFolder}:`, e)
+            failCount++
+        }
+    }
+
+    return { successCount, failCount }
+}
+
+/**
+ * Switch files between 'ROOT' and 'DATA' base locations
+ */
+export const switchBaseLocation = async (filenames: string[], username: string | undefined) => {
+    const normalizedUsername = (username && username !== '_open' && username !== 'default') ? username : '_open'
+    const sourceLoc = currentCacheLocation
+    const targetLoc = sourceLoc === CACHE_ROOTS.ROOT ? CACHE_ROOTS.DATA : CACHE_ROOTS.ROOT
+
+    let successCount = 0
+    let failCount = 0
+
+    const folders: Array<'cache' | 'music'> = ['cache', 'music']
+
+    // Helper to get dir for a specific location
+    const getLocalDir = (folder: string, loc: string) => {
+        const folderName = folder === 'music' ? 'music' : 'cache'
+        const base = loc === CACHE_ROOTS.DATA ? global.lx.dataPath : process.cwd()
+        const userDir = (username && username !== '_open' && username !== 'default') ? username : '_open'
+        return path.join(base, folderName, userDir)
+    }
+
+    for (const filename of filenames) {
+        let sourceFolder: 'cache' | 'music' | null = null
+        let item: CacheItem | null = null
+
+        // Find folder in SOURCE location
+        for (const folder of folders) {
+            const items = indexManager.getAll(normalizedUsername, folder, sourceLoc)
+            const found = items.find(i => i.filename === filename)
+            if (found) {
+                sourceFolder = folder
+                item = found
+                break
+            }
+        }
+
+        if (!sourceFolder || !item) {
+            failCount++
+            continue
+        }
+
+        const sourceDir = getLocalDir(sourceFolder, sourceLoc)
+        const targetDir = getLocalDir(sourceFolder, targetLoc)
+
+        const sourcePath = path.join(sourceDir, filename)
+        const targetPath = path.join(targetDir, filename)
+
+        try {
+            if (fs.existsSync(sourcePath)) {
+                if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true })
+
+                // Check collision in target location
+                if (fs.existsSync(targetPath)) {
+                    console.log(`[FileCache] Base move conflict: ${filename} already exists at ${targetLoc}, skipping.`)
+                    failCount++
+                    continue
+                }
+
+                // Move audio file
+                fs.renameSync(sourcePath, targetPath)
+
+                // Move lyrics
+                if (item.lyricFilename) {
+                    const sourceLrcPath = path.join(sourceDir, item.lyricFilename)
+                    const targetLrcPath = path.join(targetDir, item.lyricFilename)
+                    if (fs.existsSync(sourceLrcPath)) {
+                        if (fs.existsSync(targetLrcPath)) fs.unlinkSync(targetLrcPath)
+                        fs.renameSync(sourceLrcPath, targetLrcPath)
+                    }
+                }
+
+                // Update Indices
+                indexManager.remove(normalizedUsername, item.id, sourceFolder, item.quality, sourceLoc)
+                // item is now in the other location's index
+                indexManager.update(normalizedUsername, item, sourceFolder, targetLoc)
+
+                successCount++
+            } else {
+                failCount++
+            }
+        } catch (e) {
+            console.error(`[FileCache] Failed to move ${filename} from ${sourceLoc} to ${targetLoc}:`, e)
+            failCount++
+        }
+    }
+
+    return { successCount, failCount, targetLoc }
+}
+

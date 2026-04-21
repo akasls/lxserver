@@ -19,7 +19,7 @@ RUN apk add --update \
 FROM base AS final
 WORKDIR /server
 
-RUN apk add --update --no-cache nodejs
+RUN apk add --update --no-cache nodejs chromaprint
 
 COPY --from=builder ./source-code/build-output ./
 

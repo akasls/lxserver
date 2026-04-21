@@ -1,11 +1,11 @@
 {
   "name": "lx-music-sync-server",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "private": true,
   "scripts": {
-    "prebuild": "node scripts/update-build-hash.js",
+    "prebuild": "node scripts/download-binary.js && node scripts/update-build-hash.js",
     "build": "rimraf server && tsc --project tsconfig.json && tsc-alias -p tsconfig.json",
-    "prestart": "node scripts/update-build-hash.js",
+    "prestart": "node scripts/download-binary.js && node scripts/update-build-hash.js",
     "start": "node ./index.js",
     "predev": "node scripts/update-build-hash.js",
     "dev": "nodemon",

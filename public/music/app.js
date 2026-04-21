@@ -116,6 +116,7 @@ const DEFAULT_SETTINGS = {
     remoteSyncCode: '', // 远程同步连接码
     enableClientModeSync: false, // 客户端模式: 每次登陆本地账户都会模拟客户端向远程服务器发起同步请求
     lastRemoteSyncMode: 'merge_remote_local', // 上次使用的远程同步模式
+    deduplicatePlaylistByQuality: true, // 同 ID 歌曲仅加入最高音质 (默认开启)
 };
 
 let settings = { ...DEFAULT_SETTINGS };
@@ -617,6 +618,10 @@ function switchTab(tabId) {
         if (window.LeaderboardManager && !window.LeaderboardManager.initialized) {
             window.LeaderboardManager.init();
         }
+    }
+
+    if (tabId === 'localmusic') {
+        document.getElementById('page-title').innerText = "本地音乐";
     }
 
     // Collapse Favorites if leaving
@@ -1394,20 +1399,31 @@ function getQualityTags(item) {
     let has320 = false;
     let hasFlac = false;
     let hasHiRes = false;
+    let hasMaster = false;
 
     if (Array.isArray(rawTypes)) {
-        // 数组格式: [{type: '320k', ...}, {type: 'flac', ...}]
         has320 = rawTypes.some(t => t.type === '320k');
         hasFlac = rawTypes.some(t => t.type === 'flac');
         hasHiRes = rawTypes.some(t => t.type === 'flac24bit');
+        hasMaster = rawTypes.some(t => t.type === 'master');
     } else {
-        // 对象格式: { '320k': {size: ...}, 'flac': ... }
         has320 = !!rawTypes['320k'];
         hasFlac = !!rawTypes['flac'];
         hasHiRes = !!rawTypes['flac24bit'];
+        hasMaster = !!rawTypes['master'];
     }
 
-    if (hasHiRes) tags.push('<span class="flex-shrink-0 px-1 py-0 rounded text-[10px] t-badge-yellow border border-yellow-200 dark:border-yellow-500/30 transition-colors">Hi-Res</span>');
+    // [New] 额外检查具体音质字段 (适用于本地歌曲或已确定音质的播放中歌曲)
+    const q = item.quality || item.type;
+    if (q) {
+        if (q === 'master') hasMaster = true;
+        else if (q === 'flac24bit') hasHiRes = true;
+        else if (q === 'flac') hasFlac = true;
+        else if (q === '320k') has320 = true;
+    }
+
+    if (hasMaster) tags.push('<span class="flex-shrink-0 px-1 py-0 rounded text-[10px] t-badge-purple border border-purple-200 dark:border-purple-500/30 transition-colors">Master</span>');
+    else if (hasHiRes) tags.push('<span class="flex-shrink-0 px-1 py-0 rounded text-[10px] t-badge-yellow border border-yellow-200 dark:border-yellow-500/30 transition-colors">Hi-Res</span>');
     else if (hasFlac) tags.push('<span class="flex-shrink-0 px-1 py-0 rounded text-[10px] t-badge-green border border-emerald-200 dark:border-emerald-500/30 transition-colors">无损</span>');
     else if (has320) tags.push('<span class="flex-shrink-0 px-1 py-0 rounded text-[10px] t-badge-blue border border-blue-200 dark:border-blue-500/30 transition-colors">高品质</span>');
 
@@ -3672,6 +3688,51 @@ function updatePlaylist(list, startIndex = 0, scope = 'local_list', shouldAddToD
         return;
     }
 
+    // [New] Deduplicate by quality if setting enabled
+    if (settings.deduplicatePlaylistByQuality && window.QualityManager) {
+        const targetSong = list[startIndex];
+        const targetId = targetSong ? (targetSong.songmid || targetSong.id) : null;
+
+        const deduplicated = [];
+        const seenIds = new Map(); // id -> index in deduplicated
+
+        list.forEach((song) => {
+            const id = song.songmid || song.id;
+            if (!id) {
+                deduplicated.push(song);
+                return;
+            }
+
+            const qualityAttr = song.quality || song.type || '128k';
+
+            if (seenIds.has(id)) {
+                const existingIdx = seenIds.get(id);
+                const existingSong = deduplicated[existingIdx];
+                const existingQuality = existingSong.quality || existingSong.type || '128k';
+
+                const p1 = window.QualityManager.QUALITY_PRIORITY.indexOf(existingQuality);
+                const p2 = window.QualityManager.QUALITY_PRIORITY.indexOf(qualityAttr);
+
+                // Priority index: master(0) > flac(2) > 320k(3)
+                // Lower index is higher quality
+                if (p2 !== -1 && (p1 === -1 || p2 < p1)) {
+                    deduplicated[existingIdx] = song;
+                }
+            } else {
+                seenIds.set(id, deduplicated.length);
+                deduplicated.push(song);
+            }
+        });
+
+        // Find new startIndex based on targetId (identity matching)
+        if (targetId) {
+            const newIndex = deduplicated.findIndex(s => (s.songmid || s.id) === targetId);
+            if (newIndex !== -1) startIndex = newIndex;
+        }
+
+        list = deduplicated;
+    }
+
     // [New] Use a shallow copy to prevent mutations from affecting the source list
     currentPlaylist = [...list];
     currentPlayingScope = scope;
@@ -4837,6 +4898,7 @@ const SETTINGS_UI_MAP = {
     enableAutoSwitchSource: { id: 'setting-auto-switch-source', type: 'checkbox' },
     enableAutoSkipOnError: { id: 'setting-auto-skip-on-error', type: 'checkbox' },
     enablePreloader: { id: 'setting-enable-preloader', type: 'checkbox' },
+    deduplicatePlaylistByQuality: { id: 'setting-deduplicate-playlist', type: 'checkbox' },
     enableSmtcLyric: {
         id: 'setting-enable-smtc-lyric',
         type: 'checkbox',

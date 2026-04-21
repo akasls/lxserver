@@ -2245,6 +2245,12 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
         }
 
         const result = fileCache.checkCache({ name, singer, source, songmid, songId, quality, exactQuality }, username)
+        if (result && result.exists && username !== '_open' && username !== 'default') {
+          const token = req.headers['x-user-token']
+          if (token) {
+            result.url += `&token=${encodeURIComponent(token as string)}`
+          }
+        }
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify(result))
         return
@@ -2356,10 +2362,29 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
       // 4. Serve Cached File
       if (pathname.startsWith('/api/music/cache/file/')) {
         const parts = pathname.replace('/api/music/cache/file/', '').split('/')
-        const username = parts.length > 1 ? decodeURIComponent(parts[0]) : '_open'
+        const reqUsername = parts.length > 1 ? decodeURIComponent(parts[0]) : '_open'
         const filename = parts.length > 1 ? parts[1] : parts[0]
 
         if (filename) {
+          let username = '_open'
+          const isPublic = !reqUsername || reqUsername === '_open' || reqUsername === 'default'
+
+          if (!isPublic) {
+            const urlToken = urlObj.searchParams.get('token')
+            if (urlToken && !req.headers['x-user-token']) {
+              (req.headers as any)['x-user-token'] = urlToken
+            }
+            if (reqUsername && !req.headers['x-user-name']) {
+              (req.headers as any)['x-user-name'] = reqUsername
+            }
+            const verified = verifyUserAuth(req)
+            if (!verified) {
+              res.writeHead(401)
+              res.end('Unauthorized')
+              return
+            }
+            username = verified
+          }
           fileCache.serveCacheFile(req, res, decodeURIComponent(filename), username)
           return
         }
@@ -2556,6 +2581,180 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
         })
         return
       }
+
+      // [New] Batch Move Files between folders
+      if (pathname === '/api/music/cache/move' && req.method === 'POST') {
+        const reqUsername = (req.headers['x-user-name'] as string) || ''
+        const isPublic = !reqUsername || reqUsername === 'default'
+        let username = '_open'
+
+        if (!isPublic) {
+          const verified = verifyUserAuth(req)
+          if (!verified) {
+            res.writeHead(401)
+            res.end(JSON.stringify({ success: false, message: 'Unauthorized' }))
+            return
+          }
+          username = verified
+        }
+
+        void readBody(req).then(async body => {
+          try {
+            const { filenames } = JSON.parse(body)
+            if (!filenames) throw new Error('Missing filenames')
+            const fileList = Array.isArray(filenames) ? filenames : [filenames]
+
+            const result = await fileCache.switchFolder(fileList, username)
+
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ success: true, ...result }))
+          } catch (e: any) {
+            res.writeHead(400)
+            res.end(e.message)
+          }
+        })
+        return
+      }
+
+      // [New] WebDAV/Base Location switch
+      if (pathname === '/api/music/cache/switch-base' && req.method === 'POST') {
+        const reqUsername = (req.headers['x-user-name'] as string) || ''
+        const isPublic = !reqUsername || reqUsername === 'default'
+        let username = '_open'
+
+        if (!isPublic) {
+          const verified = verifyUserAuth(req)
+          if (!verified) {
+            res.writeHead(401)
+            res.end(JSON.stringify({ success: false, message: 'Unauthorized' }))
+            return
+          }
+          username = verified
+        }
+
+        void readBody(req).then(async body => {
+          try {
+            const { filenames } = JSON.parse(body)
+            if (!filenames) throw new Error('Missing filenames')
+            const fileList = Array.isArray(filenames) ? filenames : [filenames]
+
+            const result = await fileCache.switchBaseLocation(fileList, username)
+
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ success: true, ...result }))
+          } catch (e: any) {
+            res.writeHead(400)
+            res.end(e.message)
+          }
+        })
+        return
+      }
+
+
+
+      // 10. Update Metadata (Batch)
+      if (pathname === '/api/music/cache/updateMetadata' && req.method === 'POST') {
+        const reqUsername = (req.headers['x-user-name'] as string) || ''
+        const isPublic = !reqUsername || reqUsername === 'default'
+        let username = '_open'
+
+        if (!isPublic) {
+          const verified = verifyUserAuth(req)
+          if (!verified) {
+            res.writeHead(401, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ success: false, message: 'Unauthorized' }))
+            return
+          }
+          username = verified
+        }
+        void readBody(req).then(async body => {
+          try {
+            const { filenames } = JSON.parse(body)
+            if (!filenames) throw new Error('Missing filenames')
+
+            const fileList = Array.isArray(filenames) ? filenames : [filenames]
+            const result = await fileCache.batchUpdateMetadata(fileList, username)
+
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ success: true, ...result }))
+          } catch (e: any) {
+            res.writeHead(400)
+            res.end(e.message)
+          }
+        })
+        return
+      }
+
+      // 11. Link Unindexed Local File
+      if (pathname === '/api/music/cache/link' && req.method === 'POST') {
+        const verified = verifyUserAuth(req)
+        if (!verified) {
+          res.writeHead(401, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ success: false, message: 'Unauthorized' }))
+          return
+        }
+
+        void readBody(req).then(async body => {
+          try {
+            const { filename, songInfo } = JSON.parse(body)
+            if (!filename || !songInfo) {
+              res.writeHead(400)
+              res.end('Missing params')
+              return
+            }
+
+            const result = await fileCache.linkLocalFile(filename, songInfo, verified)
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify(result))
+          } catch (e: any) {
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ success: false, message: e.message || 'Linking failed' }))
+          }
+        })
+        return
+      }
+
+      // 12. Identify Local File (AcoustID)
+      if (pathname === '/api/music/identify' && req.method === 'POST') {
+        const verified = verifyUserAuth(req)
+        if (!verified) {
+          res.writeHead(401, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ success: false, message: 'Unauthorized' }))
+          return
+        }
+
+        void readBody(req).then(async body => {
+          try {
+            const { filename, folder } = JSON.parse(body)
+            if (!filename) {
+              res.writeHead(400)
+              res.end('Missing filename')
+              return
+            }
+
+            const { identifyLocalSong } = require('./utils/identify')
+            const username = verified
+
+            // Get absolute path - folder can be 'cache' or 'music'
+            const musicDir = fileCache.getCacheDir(username, folder === 'music')
+            const filePath = path.join(musicDir, filename)
+
+            if (!fs.existsSync(filePath)) {
+              throw new Error('文件不存在: ' + filename)
+            }
+
+            const results = await identifyLocalSong(filePath)
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ success: true, results }))
+          } catch (e: any) {
+            console.error('[Identify] Error:', e.message)
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ success: false, message: e.message || 'Identification failed' }))
+          }
+        })
+        return
+      }
+
 
 
       // [New] Fetch Lyrics
