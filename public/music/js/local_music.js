@@ -622,6 +622,7 @@ window.LocalMusicManager = {
                 if (typeof window.requestServerLyricCache === 'function') {
                     await window.requestServerLyricCache(item.songInfo, item.quality, true);
                     success++;
+                    if (typeof showInfo === 'function') showInfo(`[${success}/${targets.length}] 成功补全: ${item.name}`);
                 } else {
                     fail++;
                 }
