@@ -2775,6 +2775,29 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
           songmid = songmid.slice(sourcePrefix.length)
         }
 
+        // [优化] 先检查本地 .lrc 文件缓存，命中则直接返回，无需网络请求（断网也可用）
+        const reqUsername = (req.headers['x-user-name'] as string) || ''
+        const isPublic = !reqUsername || reqUsername === 'default'
+        let lyricUsername = '_open'
+        if (!isPublic) {
+          const verified = verifyUserAuth(req)
+          if (verified) lyricUsername = verified
+        }
+        const localLyricResult = fileCache.checkLyricCache({
+          source,
+          songmid,
+          id: urlObj.searchParams.get('songId') || urlObj.searchParams.get('id') || songmid,
+          name: urlObj.searchParams.get('name') || '',
+          singer: urlObj.searchParams.get('singer') || '',
+        }, lyricUsername)
+
+        if (localLyricResult.exists && localLyricResult.content) {
+          console.log(`[Lyric] 命中本地 .lrc 缓存: ${source}_${songmid}`)
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=86400' })
+          res.end(JSON.stringify({ ...localLyricResult.content, _fromLocalCache: true }))
+          return
+        }
+
         try {
           if (!musicSdk[source]) {
             throw new Error('Source not supported')
@@ -2809,6 +2832,21 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
         } catch (err: any) {
           console.error('[Lyric] Fetch error:', source, songmid, err.message || err)
 
+          // [Fallback] 网络请求失败时，再次尝试本地 .lrc 文件（防止 Step2 miss 但物理文件存在的情况）
+          const fallbackResult = fileCache.checkLyricCache({
+            source,
+            songmid,
+            id: urlObj.searchParams.get('songId') || urlObj.searchParams.get('id') || songmid,
+            name: urlObj.searchParams.get('name') || '',
+            singer: urlObj.searchParams.get('singer') || '',
+          }, lyricUsername)
+          if (fallbackResult.exists && fallbackResult.content) {
+            console.log(`[Lyric] 网络失败，fallback 到本地 .lrc: ${source}_${songmid}`)
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ ...fallbackResult.content, _fromLocalCache: true }))
+            return
+          }
+
           // Avoid circular structure error - only send message
           res.writeHead(500, { 'Content-Type': 'text/plain' })
           res.end(err.message || 'Failed to fetch lyric')
@@ -2842,7 +2880,9 @@ const handleStartServer = async (port = 9527, ip = '127.0.0.1') => await new Pro
           return
         }
 
-        const result = fileCache.checkLyricCache({ source, songmid, id: songId }, username)
+        const name = urlObj.searchParams.get('name') || ''
+        const singer = urlObj.searchParams.get('singer') || ''
+        const result = fileCache.checkLyricCache({ source, songmid, id: songId, name, singer }, username)
         if (result.exists) {
           res.writeHead(200, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ success: true, data: result.content }))

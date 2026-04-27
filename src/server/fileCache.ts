@@ -969,7 +969,35 @@ export const checkLyricCache = (songInfo: any, username?: string) => {
         }
     }
 
-    // Physical scan fallback
+    // [Fix] Index-based name+singer fallback for non-standard naming patterns (simple/artist-title)
+    // When the lrc filename does not contain a song ID, match by name + singer from the index
+    if (songInfo.name && songInfo.singer) {
+        const targetName = String(songInfo.name).toLowerCase()
+        const targetSinger = String(songInfo.singer).toLowerCase()
+        for (const folder of folderTypes) {
+            const allItems = indexManager.getAll(normalizedUsername, folder)
+            const matched = allItems.find(item =>
+                item.hasLyric &&
+                item.lyricFilename &&
+                item.name.toLowerCase() === targetName &&
+                item.singer.toLowerCase() === targetSinger
+            )
+            if (matched && matched.lyricFilename) {
+                const dir = getCacheDir(normalizedUsername, folder === 'music')
+                const lrcPath = path.join(dir, matched.lyricFilename)
+                if (fs.existsSync(lrcPath)) {
+                    return {
+                        exists: true,
+                        path: lrcPath,
+                        content: parseLyrics(fs.readFileSync(lrcPath, 'utf-8')),
+                        filename: matched.lyricFilename
+                    }
+                }
+            }
+        }
+    }
+
+    // Physical scan fallback (for standard naming pattern: Name_-_Singer_-_Source_-_ID_-_Quality)
     const roots = ['cache', 'music']
     const basePaths = roots.map(folder => getCacheDir(normalizedUsername, folder === 'music'))
     const cleanId = (sid: string) => String(sid || '').replace(/^(tx|mg|wy|kg|kw|bd|mg)_/, '')
@@ -1038,15 +1066,19 @@ export const saveLyricCache = (songInfo: any, lyricsObj: any, username?: string,
         fs.writeFileSync(finalPath, formattedLrc, { encoding: 'utf-8' })
         console.log(`[FileCache] Lyric cached saved to: ${finalPath}`)
 
-        // Update index
-        const id = String(songInfo.id || songInfo.songmid)
+        // Update index — use normalizeSongId to ensure the ID has source prefix, matching index keys
+        const id = normalizeSongId(songInfo)
         const normalizedUsername = (username && username !== '_open' && username !== 'default') ? username : '_open'
-        const folder: 'cache' | 'music' = isOnlyDownload ? 'music' : 'cache'
-        const existing = indexManager.get(normalizedUsername, id, folder, quality)
-        if (existing) {
-            existing.lyricFilename = lyricFile
-            existing.hasLyric = true
-            indexManager.save(normalizedUsername, folder)
+        // Update both cache and music folders in case the audio was found in either
+        const foldersToUpdate: Array<'cache' | 'music'> = ['cache', 'music']
+        for (const folder of foldersToUpdate) {
+            const existing = indexManager.get(normalizedUsername, id, folder, quality)
+            if (existing) {
+                existing.lyricFilename = lyricFile
+                existing.hasLyric = true
+                indexManager.save(normalizedUsername, folder)
+                break
+            }
         }
 
         void checkAndCleanupCache(username)

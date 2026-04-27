@@ -1,7 +1,7 @@
 import { httpFetch } from '../../request'
 import tipSearch from './tipSearch'
 import musicSearch from './musicSearch'
-import { formatSinger } from './util'
+import { formatSinger, formatPic } from './util'
 import leaderboard from './leaderboard'
 import lyric from './lyric'
 import pic from './pic'
@@ -47,7 +47,7 @@ const kw = {
       // console.log(JSON.stringify(info))
       songInfo.name = info.name
       songInfo.singer = formatSinger(info.artist)
-      songInfo.img = info.pic
+      songInfo.img = formatPic(info.pic)
       songInfo.albumName = info.album
       return songInfo
       // return Object.assign({}, songInfo, {

@@ -38,6 +38,12 @@ export const objStr2JSON = str => {
 
 
 export const formatSinger = rawData => rawData.replace(/&/g, '、')
+export const formatPic = (url, size = 1000) => {
+  if (!url) return url
+  return url.replace(/(\/star\/albumcover\/)\d+/, `$1${size}`)
+    .replace(/(pictype=)\d+/, `$1${size}`)
+    .replace(/(size=)\d+/, `$1${size}`)
+}
 
 export const matchToken = headers => {
   try {

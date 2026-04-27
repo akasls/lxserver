@@ -1044,7 +1044,7 @@ const SOURCES = ['kw', 'kg', 'tx', 'wy', 'mg'];
 
 
 //搜索歌曲
-async function doSearch(page = 1, append = false) {
+async function doSearch(page = 1, append = false, prefetch = false) {
     const typeEl = document.getElementById('search-type');
     const type = typeEl ? typeEl.value : 'song';
 
@@ -1114,7 +1114,8 @@ async function doSearch(page = 1, append = false) {
 
     // Network Search Logic
     const source = document.getElementById('search-source').value;
-    const FETCH_PAGES_STEP = 3; // 每次请求的页数步长
+    //翻页步长
+    const FETCH_PAGES_STEP = 1;
 
     // 保存到缓存
     localStorage.setItem('search-source', source);
@@ -1189,7 +1190,7 @@ async function doSearch(page = 1, append = false) {
 
             if (newItems.length > 0) {
                 const combinedList = [...(window.viewingPlaylist || []), ...newItems];
-                currentPage++;
+                if (!prefetch) currentPage++;
                 if (type === 'singer') renderSingerResults(combinedList);
                 else if (type === 'album') renderAlbumResults(combinedList);
                 else renderResults(combinedList);
@@ -2374,6 +2375,25 @@ function renderResults(list) {
     // Init Lazy Loader
     lazyLoadImages();
     applyMarqueeChecks();
+
+    // [Prefetch] 自动后台预加载逻辑
+    if (currentSearchScope === 'network' && currentPage === totalPages) {
+        const FETCH_PAGES_STEP = 3;
+        const nextNetPage = (window.currentNetworkPage || 1) + FETCH_PAGES_STEP;
+
+        // 避免重复触发
+        if (!window._prefetchingPending || window._prefetchingPending !== nextNetPage) {
+            window._prefetchingPending = nextNetPage;
+            console.log(`[Prefetch] 触及本地末页 (${totalPages})，自动拉取后续 ${FETCH_PAGES_STEP} 页... (Next URL Page: ${nextNetPage})`);
+
+            // 延迟一点触发，确保 UI 先更新
+            setTimeout(() => {
+                doSearch(nextNetPage, true, true).finally(() => {
+                    // 完成后清除标志，但不再主动重置，防止同一页重复触发
+                });
+            }, 500);
+        }
+    }
 }
 
 // Generic Marquee Helper
@@ -2864,7 +2884,9 @@ async function fetchSongUrl(song, quality, isRetry = false, isSilent = false) {
                 } catch (e) { }
             }
             if (settings.enableServerCache && !finalUrl.includes('/api/music/cache/file/')) {
-                triggerServerCache(song, finalUrl, quality);
+                // [Fix] 传递原始 result.url 而非经过 applyAutoProxy 处理后的相对代理路径，
+                // 否则后端下载器会因无法识别相对路径而报 ERR_INVALID_URL 错误。
+                triggerServerCache(song, result.url, quality);
             }
             console.log(`[Resolve] Online Success: ${song.name} via ${result.sourceName || 'Unknown'}`);
             return {
@@ -5913,7 +5935,7 @@ async function fetchLyric(song, quality = null) {
 
     if (settings.enableServerLyricCache !== false) {
         try {
-            const serverCacheUrl = `${API_BASE} /cache/lyric ? source = ${source}& songmid=${songmid}& songId=${song.id || ''} `;
+            const serverCacheUrl = `${API_BASE}/cache/lyric?source=${source}&songmid=${songmid}&songId=${encodeURIComponent(song.id || '')}&name=${encodeURIComponent(song.name || '')}&singer=${encodeURIComponent(song.singer || '')}`;
             const scRes = await fetch(serverCacheUrl, { headers });
             if (scRes.ok) {
                 const scData = await scRes.json();
@@ -5972,7 +5994,8 @@ async function fetchLyric(song, quality = null) {
         currentRawRlrc = data.rlyric || '';
         currentRawKlrc = data.klyric || data.lxlyric || '';
 
-        console.log(`[Lyric] 获取到网络歌词:`, { source, songmid });
+        const isFromLocal = !!data._fromLocalCache;
+        console.log(`[Lyric] ${isFromLocal ? '使用服务器本地缓存歌词' : '获取到网络歌词'}:`, { source, songmid });
 
         // ===== 4. 写入缓存 (浏览器本地 + 服务器端) =====
         if (currentRawLrc) {
@@ -5993,8 +6016,8 @@ async function fetchLyric(song, quality = null) {
                 }
             }
 
-            // 写入服务器端
-            if (settings.enableServerLyricCache !== false) {
+            // 写入服务器端 (如果不是已经来自服务器缓存，且启用了服务端缓存)
+            if (settings.enableServerLyricCache !== false && !isFromLocal) {
                 try {
                     fetch(`${API_BASE}/cache/lyric`, {
                         method: 'POST',

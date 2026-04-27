@@ -3,7 +3,7 @@
 import { httpFetch } from '../../request'
 import { formatPlayTime, decodeName } from '../../index'
 // import { debug } from '../../utils/env'
-import { formatSinger } from './util'
+import { formatSinger, formatPic } from './util'
 
 export default {
   regExps: {
@@ -89,7 +89,7 @@ export default {
         interval: Number.isNaN(interval) ? 0 : formatPlayTime(interval),
         albumName: info.ALBUM ? decodeName(info.ALBUM) : '',
         lrc: null,
-        img: info.prob_albumpic || (info.web_albumpic_short ? `https://img4.kuwo.cn/star/albumcover/500${info.web_albumpic_short}` : null),
+        img: formatPic(info.prob_albumpic || (info.web_albumpic_short ? `https://img4.kuwo.cn/star/albumcover/1000${info.web_albumpic_short}` : null)),
         otherSource: null,
         types,
         _types,

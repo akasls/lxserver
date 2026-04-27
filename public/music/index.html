@@ -1746,7 +1746,7 @@
                             </div>
 
                             <div
-                                class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6 relative z-10">
+                                class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 md:gap-6 relative z-10">
                                 <!-- 关键词搜索 -->
                                 <div class="space-y-2">
                                     <label
@@ -1794,6 +1794,21 @@
                                             <option value="unindexed">未索引文件</option>
                                         </select>
                                     </div>
+                                </div>
+
+                                <!-- 平台来源 -->
+                                <div class="space-y-2">
+                                    <label
+                                        class="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">平台来源</label>
+                                    <select id="lm-source-select" onchange="window.LocalMusicManager.applyFilters()"
+                                        class="w-full bg-white/80 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500/50 transition-all outline-none t-text-main backdrop-blur-sm">
+                                        <option value="all">所有平台</option>
+                                        <option value="wy">网易云</option>
+                                        <option value="tx">企鹅音乐</option>
+                                        <option value="kg">酷狗音乐</option>
+                                        <option value="kw">酷我音乐</option>
+                                        <option value="mg">咪咕音乐</option>
+                                    </select>
                                 </div>
 
                                 <!-- 排序设置 -->

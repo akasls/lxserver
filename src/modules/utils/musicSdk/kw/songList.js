@@ -1,6 +1,6 @@
 import { httpFetch } from '../../request'
 import { formatPlayTime, decodeName } from '../../index'
-import { formatSinger, objStr2JSON } from './util'
+import { formatSinger, objStr2JSON, formatPic } from './util'
 import album from './album'
 
 export default {
@@ -138,7 +138,7 @@ export default {
       name: item.name,
       // time: item.publish_time,
       total: item.total,
-      img: item.img,
+      img: formatPic(item.img),
       grade: item.favorcnt / 10,
       desc: item.desc,
       source: 'kw',
@@ -156,7 +156,7 @@ export default {
         name: item.name,
         total: item.total,
         // time: item.publish_time,
-        img: item.img,
+        img: formatPic(item.img),
         grade: item.favorcnt && item.favorcnt / 10,
         desc: item.desc,
         source: 'kw',
@@ -179,7 +179,7 @@ export default {
         source: 'kw',
         info: {
           name: body.title,
-          img: body.pic,
+          img: formatPic(body.pic),
           desc: body.info,
           author: body.uname,
           play_count: this.formatPlayCount(body.playnum),
@@ -210,7 +210,7 @@ export default {
         source: 'kw',
         info: {
           name: body.title,
-          img: body.pic,
+          img: formatPic(body.pic),
           desc: body.info,
           author: body.uname,
           play_count: this.formatPlayCount(body.playnum),
@@ -266,7 +266,7 @@ export default {
         songmid: item.id,
         source: 'kw',
         interval: formatPlayTime(item.duration),
-        img: item.albumPic,
+        img: formatPic(item.albumPic),
         releaseDate: item.releaseDate,
         lrc: null,
         otherSource: null,
@@ -294,7 +294,7 @@ export default {
 
     return {
       name: infoData.data.name,
-      img: infoData.data.pic,
+      img: formatPic(infoData.data.pic),
       desc: infoData.data.description,
       author: infoData.data.creatorName,
       play_count: infoData.data.playNum,
@@ -313,7 +313,7 @@ export default {
     // console.log(infoData)
     return {
       name: infoData.data.userInfo.nickname + '喜欢的音乐',
-      img: infoData.data.userInfo.headImg,
+      img: formatPic(infoData.data.userInfo.headImg),
       desc: '',
       author: infoData.data.userInfo.nickname,
       play_count: '',
@@ -435,7 +435,7 @@ export default {
         songmid: item.id,
         source: 'kw',
         interval: formatPlayTime(parseInt(item.duration)),
-        img: item.pic || item.albumpic || item.prob_albumpic || (item.web_albumpic_short ? `https://img4.kuwo.cn/star/albumcover/500${item.web_albumpic_short}` : null),
+        img: formatPic(item.pic || item.albumpic || item.prob_albumpic || (item.web_albumpic_short ? `https://img4.kuwo.cn/star/albumcover/1000${item.web_albumpic_short}` : null)),
         lrc: null,
         otherSource: null,
         types,
@@ -470,7 +470,7 @@ export default {
               name: decodeName(item.name),
               total: item.songnum,
               // time: item.publish_time,
-              img: item.pic,
+              img: formatPic(item.pic),
               desc: decodeName(item.intro),
               source: 'kw',
             }

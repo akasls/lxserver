@@ -12,6 +12,7 @@ window.LocalMusicManager = {
     filterFolder: 'all', // all | cache | music
     filterQuality: 'all',
     filterStatus: 'all', // all | missing_id3 | missing_cover | missing_lyric | unindexed
+    filterSource: 'all',
     sortBy: 'mtime',
     sortOrder: 'desc',
     quickSearchKeyword: '',
@@ -136,6 +137,7 @@ window.LocalMusicManager = {
         this.filterFolder = 'all';
         this.filterQuality = 'all';
         this.filterStatus = 'all';
+        this.filterSource = 'all';
         this.sortBy = 'mtime';
         this.sortOrder = 'desc';
 
@@ -144,6 +146,8 @@ window.LocalMusicManager = {
         document.getElementById('lm-quality-select').value = 'all';
         document.getElementById('lm-folder-select').value = 'all';
         document.getElementById('lm-status-select').value = 'all';
+        const sourceSelect = document.getElementById('lm-source-select');
+        if (sourceSelect) sourceSelect.value = 'all';
         document.getElementById('lm-sort-by').value = 'mtime';
         document.getElementById('lm-sort-order').value = 'desc';
 
@@ -197,6 +201,8 @@ window.LocalMusicManager = {
 
         const statusSelect = document.getElementById('lm-status-select');
         if (statusSelect) this.filterStatus = statusSelect.value;
+        const sourceSelect = document.getElementById('lm-source-select');
+        if (sourceSelect) this.filterSource = sourceSelect.value;
 
         const sortBySelect = document.getElementById('lm-sort-by');
         if (sortBySelect) this.sortBy = sortBySelect.value;
@@ -210,6 +216,9 @@ window.LocalMusicManager = {
 
             // Quality check
             if (this.filterQuality !== 'all' && item.quality !== this.filterQuality) return false;
+
+            // Source check
+            if (this.filterSource && this.filterSource !== 'all' && item.source !== this.filterSource) return false;
 
             // Metadata Status check
             if (this.filterStatus !== 'all') {
@@ -281,7 +290,7 @@ window.LocalMusicManager = {
 
         // 4. Update UI Indicator
         const dot = document.getElementById('lm-filter-active-dot');
-        const hasActiveFilters = this.searchKeyword || this.filterQuality !== 'all' || this.filterFolder !== 'all' || this.filterStatus !== 'all';
+        const hasActiveFilters = this.searchKeyword || this.filterQuality !== 'all' || this.filterFolder !== 'all' || this.filterStatus !== 'all' || this.filterSource !== 'all';
         if (dot) {
             if (hasActiveFilters) dot.classList.remove('hidden');
             else dot.classList.add('hidden');

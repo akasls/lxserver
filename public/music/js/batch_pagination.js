@@ -319,7 +319,8 @@ async function nextPage() {
         }
 
         try {
-            const FETCH_PAGES_STEP = 5;
+            //翻页步长
+            const FETCH_PAGES_STEP = 1;
             const nextNetPage = (window.currentNetworkPage || 1) + FETCH_PAGES_STEP;
             await window.doSearch(nextNetPage, true);
         } finally {
