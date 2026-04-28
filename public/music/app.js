@@ -2230,7 +2230,7 @@ function renderResults(list) {
 
     if (!list || list.length === 0) {
         container.innerHTML = '<div class="text-center t-text-muted p-8">未找到相关结果</div>';
-        updatePaginationInfo(0, 0, 0);
+        updatePaginationInfo(0, 0, 0, 1, 1);
         return;
     }
 
@@ -2370,7 +2370,7 @@ function renderResults(list) {
     });
 
     // Update pagination info
-    updatePaginationInfo(startIndex + 1, endIndex, totalItems);
+    updatePaginationInfo(startIndex + 1, endIndex, totalItems, currentPage, totalPages);
 
     // Init Lazy Loader
     lazyLoadImages();
@@ -4695,17 +4695,6 @@ function formatTime(s) {
     return `${min < 10 ? '0' + min : min}:${sec < 10 ? '0' + sec : sec}`;
 }
 
-// Update pagination information display
-function updatePaginationInfo(start, end, total) {
-    const infoEl = document.getElementById('pagination-info');
-    if (infoEl) {
-        if (total === 0) {
-            infoEl.textContent = '暂无数据';
-        } else {
-            infoEl.textContent = `显示 ${start}-${end} 条，共 ${total} 条`;
-        }
-    }
-}
 
 // Load settings from localStorage
 function loadSettings() {

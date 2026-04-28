@@ -1160,15 +1160,35 @@
                         </div>
                         <!-- Pagination -->
                         <div id="search-pagination-bar"
-                            class="h-12 border-t t-border-main flex items-center justify-between px-6 t-bg-main">
+                            class="h-14 md:h-12 border-t t-border-main flex items-center justify-between px-3 md:px-6 t-bg-main flex-shrink-0">
                             <button onclick="prevPage()"
-                                class="text-gray-500 hover:text-emerald-600 disabled:opacity-30 transition-colors">
-                                <i class="fas fa-chevron-left"></i> 上一页
+                                class="text-gray-500 hover:text-emerald-600 disabled:opacity-30 transition-colors text-sm flex items-center gap-1">
+                                <i class="fas fa-chevron-left text-[10px]"></i> <span
+                                    class="hidden sm:inline">上一页</span>
                             </button>
-                            <span id="pagination-info" class="text-xs t-text-muted font-mono">第 1 页</span>
+
+                            <div
+                                class="flex flex-col sm:flex-row items-center gap-1 sm:gap-4 flex-1 justify-center min-w-0 mx-2">
+                                <span id="pagination-info"
+                                    class="text-[10px] md:text-xs t-text-muted font-mono whitespace-nowrap">第 1 / 1
+                                    页</span>
+                                <div id="page-jump-container"
+                                    class="flex items-center gap-1.5 bg-gray-500/5 px-2 py-0.5 rounded-lg border t-border-main">
+                                    <input id="jump-page-input" type="number" min="1"
+                                        class="w-10 h-6 text-xs text-center bg-transparent focus:outline-none t-text-main"
+                                        placeholder="页" onkeydown="if(event.key==='Enter') jumpToPage()">
+                                    <span class="w-[1px] h-3 bg-gray-300 dark:bg-gray-700"></span>
+                                    <button onclick="jumpToPage()"
+                                        class="text-[10px] font-bold text-emerald-600 hover:text-emerald-500 transition-colors">
+                                        跳转
+                                    </button>
+                                </div>
+                            </div>
+
                             <button onclick="nextPage()"
-                                class="text-gray-500 hover:text-emerald-600 disabled:opacity-30 transition-colors">
-                                下一页 <i class="fas fa-chevron-right"></i>
+                                class="text-gray-500 hover:text-emerald-600 disabled:opacity-30 transition-colors text-sm flex items-center gap-1">
+                                <span class="hidden sm:inline">下一页</span> <i
+                                    class="fas fa-chevron-right text-[10px]"></i>
                             </button>
                         </div>
                     </div>

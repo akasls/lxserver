@@ -286,13 +286,32 @@ function setListById(listId, newList) {
 }
 
 // Pagination Functions
-function updatePaginationInfo(start, end, total) {
+function scrollToSearchResultsTop() {
+    const container = document.getElementById('search-results');
+    if (container) {
+        container.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+}
+
+function updatePaginationInfo(start, end, total, current, totalPages) {
     const infoEl = document.getElementById('pagination-info');
     if (infoEl) {
         if (total === 0) {
             infoEl.textContent = '无结果';
         } else {
-            infoEl.textContent = `显示 ${start}-${end} / 共 ${total} 首`;
+            // 显示 第 X / 共 Y 页 (Z 条)
+            infoEl.textContent = `第 ${current || 1} /  ${totalPages || 1} 页 (${total} 条)`;
+        }
+    }
+
+    // 更新跳转输入框的状态
+    const jumpInput = document.getElementById('jump-page-input');
+    if (jumpInput) {
+        const pageNum = current || 1;
+        jumpInput.max = totalPages || 1;
+        // 只有当输入框未获得焦点时才强制更新值，避免干扰用户输入
+        if (document.activeElement !== jumpInput) {
+            jumpInput.value = pageNum;
         }
     }
 }
@@ -300,6 +319,7 @@ function updatePaginationInfo(start, end, total) {
 function goToPage(page) {
     currentPage = page;
     renderResults(window.viewingPlaylist);
+    scrollToSearchResultsTop();
 }
 
 async function nextPage() {
@@ -310,6 +330,7 @@ async function nextPage() {
     if (currentPage < totalPages) {
         currentPage++;
         renderResults(window.viewingPlaylist);
+        scrollToSearchResultsTop();
     } else if (window.currentSearchScope === 'network') {
         const btn = document.querySelector('button[onclick="nextPage()"]');
         const oldHtml = btn ? btn.innerHTML : '';
@@ -319,6 +340,9 @@ async function nextPage() {
         }
 
         try {
+            // 翻页时也让列表回到顶端，虽然是追加模式，但因为是用户主动点击下一页，体感上是进入新内容
+            scrollToSearchResultsTop();
+
             //翻页步长
             const FETCH_PAGES_STEP = 1;
             const nextNetPage = (window.currentNetworkPage || 1) + FETCH_PAGES_STEP;
@@ -336,7 +360,28 @@ function prevPage() {
     if (currentPage > 1) {
         currentPage--;
         renderResults(viewingPlaylist);
+        scrollToSearchResultsTop();
     }
+}
+
+function jumpToPage() {
+    const input = document.getElementById('jump-page-input');
+    if (!input) return;
+    let page = parseInt(input.value);
+
+    const totalItems = window.viewingPlaylist ? window.viewingPlaylist.length : 0;
+    const itemsPerPage = settings.itemsPerPage === 'all' ? totalItems : parseInt(settings.itemsPerPage);
+    const totalPages = Math.ceil((totalItems || 1) / (itemsPerPage || 1));
+
+    if (isNaN(page) || page < 1) page = 1;
+    if (page > totalPages) page = totalPages;
+
+    if (page !== currentPage) {
+        currentPage = page;
+        renderResults(window.viewingPlaylist);
+        scrollToSearchResultsTop();
+    }
+    input.value = page;
 }
 
 // Settings: Items Per Page
@@ -410,4 +455,5 @@ window.handleBatchCollect = handleBatchCollect;
 window.goToPage = goToPage;
 window.nextPage = nextPage;
 window.prevPage = prevPage;
+window.jumpToPage = jumpToPage;
 window.changeItemsPerPage = changeItemsPerPage;
