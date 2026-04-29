@@ -37,7 +37,7 @@
   "homepage": "https://github.com/XCQ0607/lxserver#readme",
   "dependencies": {
     "@foobar404/wave": "^2.0.5",
-    "@types/formidable": "^3.4.6",
+    "@types/formidable": "^3.5.1",
     "archiver": "^7.0.1",
     "brace-expansion": "^5.0.5",
     "bufferutil": "^4.0.8",
